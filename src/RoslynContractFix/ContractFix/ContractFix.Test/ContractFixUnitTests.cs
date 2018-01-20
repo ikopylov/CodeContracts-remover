@@ -71,12 +71,14 @@ namespace ContractFix.Test
 
         protected override CodeFixProvider GetCSharpCodeFixProvider()
         {
-            return new ContractFixCodeFixProvider();
+            return null;
+            //return new ContractFixCodeFixProvider();
         }
 
         protected override DiagnosticAnalyzer GetCSharpDiagnosticAnalyzer()
         {
-            return new ContractFixAnalyzer();
+            return null;
+            //return new ContractFixAnalyzer();
         }
     }
 }
