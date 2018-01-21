@@ -4,6 +4,7 @@ using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace Nmasa
 {
@@ -28,6 +29,7 @@ namespace Nmasa
             Contract.Requires<InvalidOperationException>(data < 100);
             Contract.Requires(val != null);
             System.Diagnostics.Contracts.Contract.Requires(val != null);
+            Contract.Assert(val != null, "Message " + 1.ToString());
             System.Diagnostics.Debug.Assert(val != null);
         }
     }

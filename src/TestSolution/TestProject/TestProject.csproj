@@ -48,8 +48,5 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Analyzer Include="..\..\..\Work\Qoollo\CodeFix\ContractFix\ContractFix\ContractFix.Vsix\bin\Debug\ContractFix.dll" />
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
