@@ -29,6 +29,7 @@ namespace Nmasa
             Contract.Requires<InvalidOperationException>(data < 100);
             Contract.Requires(val != null);
             System.Diagnostics.Contracts.Contract.Requires(val != null);
+            Contract.Ensures(val == null && Contract.ValueAtReturn(out data) == 1);
             Contract.Assert(val != null, "Message " + 1.ToString());
             System.Diagnostics.Debug.Assert(val != null);
         }

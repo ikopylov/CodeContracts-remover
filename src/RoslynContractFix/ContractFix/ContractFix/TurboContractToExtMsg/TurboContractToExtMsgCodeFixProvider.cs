@@ -14,21 +14,23 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ContractFix.ContractToDebugAssert
+namespace ContractFix.TurboContractToExtMsg
 {
-    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ContractToDebugAssertCodeFixProvider)), Shared]
-    public class ContractToDebugAssertCodeFixProvider : CodeFixProvider
+    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(TurboContractToExtMsgCodeFixProvider)), Shared]
+    public class TurboContractToExtMsgCodeFixProvider : CodeFixProvider
     {
-        private const string title = "Replace with Debug.Assert";
+        private const string title = "Extend with condition message";
 
         private class ContractCallInfo
         {
-            public ContractCallInfo(ExpressionSyntax condition, ExpressionSyntax message)
+            public ContractCallInfo(NameSyntax methodName, ExpressionSyntax condition, ExpressionSyntax message)
             {
+                MethodName = methodName;
                 Condition = condition;
                 Message = message;
             }
 
+            public NameSyntax MethodName { get; }
             public ExpressionSyntax Condition { get; }
             public ExpressionSyntax Message { get; }
         }
@@ -38,7 +40,7 @@ namespace ContractFix.ContractToDebugAssert
         {
             get
             {
-                return ImmutableArray.Create(ContractToDebugAssertAnalyzer.DiagnosticId);
+                return ImmutableArray.Create(TurboContractToExtMsgAnalyzer.DiagnosticId);
             }
         }
 
@@ -65,13 +67,14 @@ namespace ContractFix.ContractToDebugAssert
         }
 
 
+
         private static ContractCallInfo AnalyzeContractCallStatement(ExpressionStatementSyntax node)
         {
             if (node != null &&
                 node.Expression is InvocationExpressionSyntax invocation &&
                 invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
                 memberAccess.Name is SimpleNameSyntax simpleName &&
-                ContractToDebugAssertAnalyzer.MethodNamesToFix.Contains(simpleName.Identifier.ValueText) &&
+                TurboContractToExtMsgAnalyzer.MethodNamesToFix.Contains(simpleName.Identifier.ValueText) &&
                 invocation.ArgumentList.Arguments.Count > 0 &&
                 invocation.ArgumentList.Arguments[0].Expression is ExpressionSyntax conditionExression)
             {
@@ -82,7 +85,7 @@ namespace ContractFix.ContractToDebugAssert
                     userDesc = userDescExpr;
                 }
 
-                return new ContractCallInfo(conditionExression, userDesc);
+                return new ContractCallInfo(simpleName, conditionExression, userDesc);
             }
 
 
@@ -108,22 +111,23 @@ namespace ContractFix.ContractToDebugAssert
             if (contractCallInfo.Message == null)
             {
                 debugAssertCallNode = generator.InvocationExpression(
-                    generator.MemberAccessExpression(generator.IdentifierName(nameof(Debug)), nameof(Debug.Assert)),
+                    generator.MemberAccessExpression(generator.IdentifierName("TurboContract"), contractCallInfo.MethodName),
                     contractCallInfo.Condition,
+                    generator.NullLiteralExpression(),
                     generator.LiteralExpression(contractCallInfo.Condition.ToString()));
             }
             else
             {
                 debugAssertCallNode = generator.InvocationExpression(
-                    generator.MemberAccessExpression(generator.IdentifierName(nameof(Debug)), nameof(Debug.Assert)),
+                    generator.MemberAccessExpression(generator.IdentifierName("TurboContract"), contractCallInfo.MethodName),
                     contractCallInfo.Condition,
-                    generator.LiteralExpression(contractCallInfo.Condition.ToString()),
-                    contractCallInfo.Message);
+                    contractCallInfo.Message,
+                    generator.LiteralExpression(contractCallInfo.Condition.ToString()));
             }
 
             debugAssertCallNode = debugAssertCallNode.WithTrailingTrivia(trailingTrivia).WithLeadingTrivia(leadingTrivia);
 
-            Helpers.AddUsing(editor, "System.Diagnostics", nodeToReplace.SpanStart);
+            Helpers.AddUsing(editor, "Qoollo.Turbo", nodeToReplace.SpanStart);
             editor.ReplaceNode(nodeToReplace, debugAssertCallNode);
             return editor.GetChangedDocument();
         }
