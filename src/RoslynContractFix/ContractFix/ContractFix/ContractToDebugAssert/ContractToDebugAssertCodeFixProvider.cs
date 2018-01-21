@@ -44,7 +44,8 @@ namespace ContractFix.ContractToDebugAssert
 
         public sealed override FixAllProvider GetFixAllProvider()
         {
-            return WellKnownFixAllProviders.BatchFixer;
+            return new ContractToDebugAssertFixAllProvider();
+            //return WellKnownFixAllProviders.BatchFixer;
         }
 
         public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
@@ -59,7 +60,7 @@ namespace ContractFix.ContractToDebugAssert
             var stringText = nodeToReplace.FindToken(diagnosticSpan.Start).ValueText;
             context.RegisterCodeFix(CodeAction.Create(
                     title: title,
-                    createChangedDocument: c => ReplaceWithTurboContract(context.Document, nodeToReplace, stringText, c),
+                    createChangedDocument: c => ReplaceWithDebugAssert(context.Document, nodeToReplace, stringText, c),
                     equivalenceKey: title),
                 context.Diagnostics);
         }
@@ -89,16 +90,13 @@ namespace ContractFix.ContractToDebugAssert
             return null;
         }
 
-        private static async Task<Document> ReplaceWithTurboContract(Document document, SyntaxNode nodeToReplace, string stringText, CancellationToken cancellationToken)
+        internal static void ReplaceWithDebugAssert(DocumentEditor editor, SyntaxNode nodeToReplace)
         {
-            var editor = await DocumentEditor.CreateAsync(document, cancellationToken).ConfigureAwait(false);
-            var generator = editor.Generator;
-
-            var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
-
             var contractCallInfo = AnalyzeContractCallStatement(nodeToReplace.Parent as ExpressionStatementSyntax);
             if (contractCallInfo == null)
-                return document;
+                return;
+
+            var generator = editor.Generator;
 
             var trailingTrivia = nodeToReplace.GetTrailingTrivia();
             var leadingTrivia = nodeToReplace.GetLeadingTrivia();
@@ -123,8 +121,49 @@ namespace ContractFix.ContractToDebugAssert
 
             debugAssertCallNode = debugAssertCallNode.WithTrailingTrivia(trailingTrivia).WithLeadingTrivia(leadingTrivia);
 
-            Helpers.AddUsing(editor, "System.Diagnostics", nodeToReplace.SpanStart);
             editor.ReplaceNode(nodeToReplace, debugAssertCallNode);
+        }
+
+        private static async Task<Document> ReplaceWithDebugAssert(Document document, SyntaxNode nodeToReplace, string stringText, CancellationToken cancellationToken)
+        {
+            var editor = await DocumentEditor.CreateAsync(document, cancellationToken).ConfigureAwait(false);
+
+
+            Helpers.AddUsing(editor, "System.Diagnostics", nodeToReplace.SpanStart);
+            ReplaceWithDebugAssert(editor, nodeToReplace);
+            return editor.GetChangedDocument();
+        }
+    }
+
+
+    public class ContractToDebugAssertFixAllProvider : FixAllProvider
+    {
+        private const string title = "Replace with Debug.Assert All";
+
+        public override async Task<CodeAction> GetFixAsync(FixAllContext context)
+        {
+            var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
+            var diagnostics = await context.GetDocumentDiagnosticsAsync(context.Document);
+            var nodesToReplace = diagnostics.Select(o => root.FindNode(o.Location.SourceSpan, getInnermostNodeForTie: true)).ToList();
+
+            return CodeAction.Create(
+                    title: title,
+                    createChangedDocument: c => ReplaceAllWithDebugAssert(context.Document, nodesToReplace, c),
+                    equivalenceKey: title);
+        }
+
+        private static async Task<Document> ReplaceAllWithDebugAssert(Document document, List<SyntaxNode> nodesToReplace, CancellationToken cancellationToken)
+        {
+            if (nodesToReplace.Count == 0)
+                return document;
+
+            var editor = await DocumentEditor.CreateAsync(document, cancellationToken).ConfigureAwait(false);
+
+            Helpers.AddUsing(editor, "System.Diagnostics", nodesToReplace[0].SpanStart);
+
+            foreach (var node in nodesToReplace)
+                ContractToDebugAssertCodeFixProvider.ReplaceWithDebugAssert(editor, node);
+
             return editor.GetChangedDocument();
         }
     }

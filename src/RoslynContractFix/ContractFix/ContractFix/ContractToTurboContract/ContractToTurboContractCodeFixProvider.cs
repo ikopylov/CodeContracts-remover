@@ -30,7 +30,8 @@ namespace ContractFix.ContractToTurboContract
 
         public sealed override FixAllProvider GetFixAllProvider()
         {
-            return WellKnownFixAllProviders.BatchFixer;
+            return new ContractToTurboContractFixAllProvider();
+            //return WellKnownFixAllProviders.BatchFixer;
         }
 
         public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
@@ -38,36 +39,68 @@ namespace ContractFix.ContractToTurboContract
             var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
             var diagnostics = context.Diagnostics;
             var diagnosticSpan = context.Span;
-            // getInnerModeNodeForTie = true so we are replacing the string literal node and not the whole argument node
             var nodeToReplace = root.FindNode(diagnosticSpan, getInnermostNodeForTie: true);
 
             Debug.Assert(nodeToReplace != null);
             var stringText = nodeToReplace.FindToken(diagnosticSpan.Start).ValueText;
             context.RegisterCodeFix(CodeAction.Create(
                     title: title,
-                    createChangedDocument: c => ReplaceWithTurboContract(context.Document, nodeToReplace, stringText, c),
+                    createChangedDocument: c => ReplaceWithTurboContract(context.Document, nodeToReplace, c),
                     equivalenceKey: title),
                 context.Diagnostics);
         }
 
-        private static async Task<Document> ReplaceWithTurboContract(Document document, SyntaxNode nodeToReplace, string stringText, CancellationToken cancellationToken)
+        internal static void ReplaceWithTurboContract(DocumentEditor editor, SyntaxNode nodeToReplace)
         {
-            var editor = await DocumentEditor.CreateAsync(document, cancellationToken).ConfigureAwait(false);
-            var generator = editor.Generator;
-
-            var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
-
             var trailingTrivia = nodeToReplace.GetTrailingTrivia();
             var leadingTrivia = nodeToReplace.GetLeadingTrivia();
 
-            var turboIdentifier = generator.IdentifierName("TurboContract")
+            var turboIdentifier = editor.Generator.IdentifierName("TurboContract")
                 .WithTrailingTrivia(trailingTrivia)
                 .WithLeadingTrivia(leadingTrivia);
 
-            var annotation = new SyntaxAnnotation();
+            editor.ReplaceNode(nodeToReplace, turboIdentifier);
+        }
+
+        private static async Task<Document> ReplaceWithTurboContract(Document document, SyntaxNode nodeToReplace, CancellationToken cancellationToken)
+        {
+            var editor = await DocumentEditor.CreateAsync(document, cancellationToken).ConfigureAwait(false);
 
             Helpers.AddUsing(editor, "Qoollo.Turbo", nodeToReplace.SpanStart);
-            editor.ReplaceNode(nodeToReplace, turboIdentifier);
+            ReplaceWithTurboContract(editor, nodeToReplace);
+            return editor.GetChangedDocument();
+        }
+    }
+
+    public class ContractToTurboContractFixAllProvider : FixAllProvider
+    {
+        private const string title = "Replace with TurboContract All";
+
+        public override async Task<CodeAction> GetFixAsync(FixAllContext context)
+        {
+            var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
+            var diagnostics = await context.GetDocumentDiagnosticsAsync(context.Document);
+            var nodesToReplace = diagnostics.Select(o => root.FindNode(o.Location.SourceSpan, getInnermostNodeForTie: true)).ToList();
+
+            return CodeAction.Create(
+                    title: title,
+                    createChangedDocument: c => ReplaceAllWithTurboContract(context.Document, nodesToReplace, c),
+                    equivalenceKey: title);
+        }
+
+        private static async Task<Document> ReplaceAllWithTurboContract(Document document, List<SyntaxNode> nodesToReplace, CancellationToken cancellationToken)
+        {
+            if (nodesToReplace.Count == 0)
+                return document;
+
+            var editor = await DocumentEditor.CreateAsync(document, cancellationToken).ConfigureAwait(false);
+            var generator = editor.Generator;
+
+            Helpers.AddUsing(editor, "Qoollo.Turbo", nodesToReplace[0].SpanStart);
+
+            foreach (var node in nodesToReplace)
+                ContractToTurboContractCodeFixProvider.ReplaceWithTurboContract(editor, node);
+
             return editor.GetChangedDocument();
         }
     }

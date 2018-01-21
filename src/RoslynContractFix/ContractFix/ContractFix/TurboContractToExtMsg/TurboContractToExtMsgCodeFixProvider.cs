@@ -127,7 +127,6 @@ namespace ContractFix.TurboContractToExtMsg
 
             debugAssertCallNode = debugAssertCallNode.WithTrailingTrivia(trailingTrivia).WithLeadingTrivia(leadingTrivia);
 
-            Helpers.AddUsing(editor, "Qoollo.Turbo", nodeToReplace.SpanStart);
             editor.ReplaceNode(nodeToReplace, debugAssertCallNode);
             return editor.GetChangedDocument();
         }
