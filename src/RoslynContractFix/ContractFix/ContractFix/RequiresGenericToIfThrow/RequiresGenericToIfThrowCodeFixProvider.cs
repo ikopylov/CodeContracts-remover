@@ -14,10 +14,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ContractFix.CodeContractGeneric
+namespace ContractFix.RequiresGenericToIfThrow
 {
-    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(CodeContractGenericCodeFixProvider)), Shared]
-    public class CodeContractGenericCodeFixProvider : CodeFixProvider
+    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(RequiresGenericToIfThrowCodeFixProvider)), Shared]
+    public class RequiresGenericToIfThrowCodeFixProvider : CodeFixProvider
     {
         private class RequireInfo
         {
@@ -39,7 +39,7 @@ namespace ContractFix.CodeContractGeneric
         {
             get
             {
-                return ImmutableArray.Create(CodeContractGenericAnalyzer.DiagnosticId);
+                return ImmutableArray.Create(RequiresGenericToIfThrowAnalyzer.DiagnosticId);
             }
         }
 
@@ -123,97 +123,86 @@ namespace ContractFix.CodeContractGeneric
 
         private static ExpressionSyntax BuildThrowExpr(IdentifierNameSyntax exception, ExpressionSyntax condition, ExpressionSyntax message, IdentifierNameSyntax parameter, SemanticModel semanticModel, SyntaxGenerator generator, CancellationToken cancellationToken)
         {
-            bool ParamOrParamName(string val)
+            bool IsParamArg(IParameterSymbol symbol)
             {
-                return val == "param" || val == "paramName";
+                return symbol.Type.SpecialType == SpecialType.System_String && (symbol.Name == "param" || symbol.Name == "paramName");
             }
-            bool MessageName(string val)
+            bool IsMessageArg(IParameterSymbol symbol)
             {
-                return val == "message";
+                return symbol.Type.SpecialType == SpecialType.System_String && symbol.Name == "message";
             }
-            bool MessageNameOrParamName(string arg1, string arg2)
+            bool IsInnerExceptionArg(IParameterSymbol symbol)
             {
-                return (ParamOrParamName(arg1) && MessageName(arg2)) || (ParamOrParamName(arg2) && MessageName(arg1));
+                return symbol.Type.Name == typeof(Exception).Name;
+            }
+
+            bool IsMethodMatchedArgs(IMethodSymbol method, params Func<IParameterSymbol, bool>[] args)
+            {
+                if (args == null || args.Length == 0)
+                    return method.Parameters.Length == 0;
+
+                if (method.Parameters.Length != args.Length)
+                    return false;
+
+                for (int i = 0; i < args.Length; i++)
+                {
+                    if (!method.Parameters.Any(args[i]))
+                        return false;
+                }
+
+                return true;
+            }
+
+            ExpressionSyntax GenerateConsturctionExpr(IMethodSymbol constructor, params (Func<IParameterSymbol, bool>, SyntaxNode)[] args)
+            {
+                if (constructor.Parameters.Length == 0)
+                    return (ExpressionSyntax)generator.ObjectCreationExpression(constructor.ContainingType);
+
+                SyntaxNode[] syntaxArgs = new SyntaxNode[constructor.Parameters.Length];
+
+                for (int i = 0; i < constructor.Parameters.Length; i++)
+                {
+                    syntaxArgs[i] = args.Single(o => o.Item1(constructor.Parameters[i])).Item2;
+                }
+
+                return (ExpressionSyntax)generator.ObjectCreationExpression(constructor.ContainingType, syntaxArgs);
             }
 
 
             var typeInfo = semanticModel.GetTypeInfo(exception, cancellationToken).Type;
+            var exceptionType = semanticModel.Compilation.GetKnownType(typeof(Exception));
             bool isArgumentException = Helpers.IsTypeOrSubtype(typeInfo, semanticModel.Compilation.GetKnownType(typeof(ArgumentException)));
+            bool isArgumentNullException = typeInfo.Equals(semanticModel.Compilation.GetKnownType(typeof(ArgumentNullException)));
+            var messagePromoted = message ?? generator.LiteralExpression(condition.ToString());
             var constructors = typeInfo.GetMembers().OfType<IMethodSymbol>().Where(m => m.MethodKind == MethodKind.Constructor).ToList();
 
-            if (message != null && parameter != null && isArgumentException)
-            {
-                var matchedConstructor = constructors.Where(o => o.Parameters.Length == 2 && 
-                                                                 o.Parameters[0].Type.SpecialType == SpecialType.System_String &&
-                                                                 o.Parameters[1].Type.SpecialType == SpecialType.System_String)
-                    .FirstOrDefault(o => MessageNameOrParamName(o.Parameters[0].Name, o.Parameters[1].Name));
+            var constructorWithParamAndMsg = constructors.FirstOrDefault(o => IsMethodMatchedArgs(o, IsParamArg, IsMessageArg));
+            var constructorWithParam = constructors.FirstOrDefault(o => IsMethodMatchedArgs(o, IsParamArg));
+            var constructorWithMsg = constructors.FirstOrDefault(o => IsMethodMatchedArgs(o, IsMessageArg));
+            var constructorWithMsgAndExc = constructors.FirstOrDefault(o => IsMethodMatchedArgs(o, IsInnerExceptionArg, IsMessageArg));
 
-                if (matchedConstructor != null)
-                {
-                    if (MessageName(matchedConstructor.Parameters[0].Name))
-                        return (ExpressionSyntax)generator.ObjectCreationExpression(typeInfo, message, generator.NameOfExpression(parameter));
-                    else
-                        return (ExpressionSyntax)generator.ObjectCreationExpression(typeInfo, generator.NameOfExpression(parameter), message);
-                }
+            if (isArgumentException && parameter != null)
+            {
+                if (isArgumentNullException && message == null && constructorWithParam != null)
+                    return GenerateConsturctionExpr(constructorWithParam, (IsParamArg, generator.NameOfExpression(parameter)));
+
+                if (constructorWithParamAndMsg != null)
+                    return GenerateConsturctionExpr(constructorWithParamAndMsg, (IsParamArg, generator.NameOfExpression(parameter)), (IsMessageArg, messagePromoted));
+
+                if (constructorWithMsg == null && constructorWithParam != null)
+                    return GenerateConsturctionExpr(constructorWithParam, (IsParamArg, generator.NameOfExpression(parameter)));
             }
 
-            if (message == null && parameter != null && isArgumentException)
-            {
-                var matchedConstructor = constructors.Where(o => o.Parameters.Length == 1 &&
-                                                                 o.Parameters[0].Type.SpecialType == SpecialType.System_String)
-                    .FirstOrDefault(o => ParamOrParamName(o.Parameters[0].Name));
 
-                if (matchedConstructor != null)
-                    return (ExpressionSyntax)generator.ObjectCreationExpression(typeInfo, generator.NameOfExpression(parameter));
+            if (constructorWithMsg != null)
+                return GenerateConsturctionExpr(constructorWithMsg, (IsMessageArg, messagePromoted));
 
-                matchedConstructor = constructors.Where(o => o.Parameters.Length == 2 &&
-                                                                 o.Parameters[0].Type.SpecialType == SpecialType.System_String &&
-                                                                 o.Parameters[1].Type.SpecialType == SpecialType.System_String)
-                    .FirstOrDefault(o => MessageNameOrParamName(o.Parameters[0].Name, o.Parameters[1].Name));
-
-                if (matchedConstructor != null)
-                {
-                    if (ParamOrParamName(matchedConstructor.Parameters[0].Name))
-                        return (ExpressionSyntax)generator.ObjectCreationExpression(typeInfo, generator.NameOfExpression(parameter), generator.LiteralExpression(condition.ToString()));
-                    else
-                        return (ExpressionSyntax)generator.ObjectCreationExpression(typeInfo, generator.LiteralExpression(condition.ToString()), generator.NameOfExpression(parameter));
-                }
-
-            }
-
-            if (message != null)
-            {
-                var matchedConstructor = constructors.FirstOrDefault(
-                                                            o => o.Parameters.Length == 1 &&
-                                                                 o.Parameters[0].Type.SpecialType == SpecialType.System_String &&
-                                                                 o.Parameters[0].Name == "message");
-
-                if (matchedConstructor != null)
-                    return (ExpressionSyntax)generator.ObjectCreationExpression(typeInfo, message);
+            if (constructorWithParamAndMsg != null && parameter != null)
+                return GenerateConsturctionExpr(constructorWithParamAndMsg, (IsParamArg, generator.NameOfExpression(parameter)), (IsMessageArg, messagePromoted));
 
 
-
-
-                matchedConstructor = constructors.FirstOrDefault(
-                                                        o => o.Parameters.Length == 2 &&
-                                                             o.Parameters[0].Type.SpecialType == SpecialType.System_String &&
-                                                             o.Parameters[0].Name == "message" &&
-                                                             o.Parameters[1].Type.Name == typeof(Exception).Name);
-
-                if (matchedConstructor != null)
-                    return (ExpressionSyntax)generator.ObjectCreationExpression(typeInfo, message, generator.CastExpression(matchedConstructor.Parameters[1].Type, generator.NullLiteralExpression()));
-            }
-
-            if (message == null && (parameter == null || !isArgumentException))
-            {
-                var matchedConstructor = constructors.FirstOrDefault(
-                                                            o => o.Parameters.Length == 1 &&
-                                                                 o.Parameters[0].Type.SpecialType == SpecialType.System_String &&
-                                                                 o.Parameters[0].Name == "message");
-
-                if (matchedConstructor != null)
-                    return (ExpressionSyntax)generator.ObjectCreationExpression(typeInfo, generator.LiteralExpression(condition.ToString()));
-            }
+            if (constructorWithMsgAndExc != null)
+                return GenerateConsturctionExpr(constructorWithParamAndMsg, (IsInnerExceptionArg, generator.CastExpression(exceptionType, generator.NullLiteralExpression())), (IsMessageArg, messagePromoted));
 
 
             return (ExpressionSyntax)generator.ObjectCreationExpression(typeInfo);

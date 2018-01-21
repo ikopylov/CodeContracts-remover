@@ -7,12 +7,12 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
 
-namespace ContractFix.CodeContractNonGeneric
+namespace ContractFix.ContractToTurboContract
 {
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class DebygAssertAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "DebugAssertReplace";
+        public const string DiagnosticId = "CR03_DebugAssertToTurboContractReplace";
         private const string Title = "Debug.Assert can be replaced with TurboContract";
         private const string MessageFormat = "can be replaced with TurboContract";
         private const string Description = "with TurboContract";

@@ -16,10 +16,10 @@ namespace ContractFix.CodeContractFromBase
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class CodeContractFromBaseAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "CodeContractFromBaseRetrieve";
-        private const string Title = "Contract should be retrieved from base type";
-        private const string MessageFormat = "Requires should be retrieved from base type: \n {0}";
-        private const string Description = "should be retrieved from base type";
+        public const string DiagnosticId = "CR05_CodeContractFromBaseRetrieve";
+        private const string Title = "Contract can be retrieved from base type";
+        private const string MessageFormat = "Requires can be retrieved from base type: \n {0}";
+        private const string Description = "can be retrieved from base type";
         private const string Category = "Usage";
 
         private static DiagnosticDescriptor Rule = new DiagnosticDescriptor(DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: Description);
@@ -38,6 +38,15 @@ namespace ContractFix.CodeContractFromBase
         {
             return method.ContainingType.AllInterfaces.SelectMany(@interface => @interface.GetMembers().OfType<IMethodSymbol>()).
                 Where(interfaceMethod => method.ContainingType.FindImplementationForInterfaceMember(interfaceMethod).Equals(method));
+        }
+        private static IEnumerable<IMethodSymbol> GetOverridenMethods(IMethodSymbol method)
+        {
+            var curMethod = method;
+            while (curMethod.IsOverride && curMethod.OverriddenMethod != null)
+            {
+                curMethod = curMethod.OverriddenMethod;
+                yield return curMethod;
+            }
         }
 
         private static IEnumerable<AttributeData> GetContractClassAttribute(ITypeSymbol type)
@@ -122,7 +131,7 @@ namespace ContractFix.CodeContractFromBase
             List<IMethodSymbol> result = new List<IMethodSymbol>();
 
             if (method.IsOverride)
-                result.Add(method.OverriddenMethod);
+                result.AddRange(GetOverridenMethods(method));
 
             result.AddRange(GetInterfaceImplementation(method));
 
@@ -218,6 +227,8 @@ namespace ContractFix.CodeContractFromBase
             var baseTypeOverridingMethods = GetBaseTypeOverridingMethod(method);
             var contractMethods = baseTypeOverridingMethods.SelectMany(o => GetContractTypeMethods(o, method)).ToList();
             contractMethods.AddRange(baseTypeOverridingMethods.SelectMany(o => GetVirtualMethodsWithContracts(o, method)));
+
+            context.CancellationToken.ThrowIfCancellationRequested();
 
             if (contractMethods.Count > 0)
             {

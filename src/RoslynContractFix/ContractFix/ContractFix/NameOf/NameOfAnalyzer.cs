@@ -14,9 +14,9 @@ namespace ContractFix
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class NameOfAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "ToNameOfCS";
-        private const string Title = "Argument can be replaced with nameof";
-        private const string MessageFormat = "Can be replaced with nameof";
+        public const string DiagnosticId = "CR01_ToNameOfCS";
+        private const string Title = "Argument string can be replaced with nameof";
+        private const string MessageFormat = "Can be replaced with nameof({0})";
         private const string Description = "Replace with nameof";
         private const string Category = "Usage";
 
@@ -42,7 +42,7 @@ namespace ContractFix
             
             if (GetParametersInScope(context).Any(o => o == text))
             {
-                context.ReportDiagnostic(Diagnostic.Create(Rule, expression.Token.GetLocation()));
+                context.ReportDiagnostic(Diagnostic.Create(Rule, expression.Token.GetLocation(), expression.Token.ValueText));
             }
         }
 

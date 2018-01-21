@@ -16,7 +16,7 @@ namespace ContractFix
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NameOfCodeFixProvider)), Shared]
     public class NameOfCodeFixProvider: CodeFixProvider
     {
-        private const string title = "Replace with NameOf";
+        private const string title = "Replace with nameof()";
 
         public sealed override ImmutableArray<string> FixableDiagnosticIds
         {

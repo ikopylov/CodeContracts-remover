@@ -13,10 +13,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ContractFix.CodeContractNonGeneric
+namespace ContractFix.ContractToTurboContract
 {
-    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(CodeContractNonGenericCodeFixProvider)), Shared]
-    public class CodeContractNonGenericCodeFixProvider: CodeFixProvider
+    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ContractToTurboContractCodeFixProvider)), Shared]
+    public class ContractToTurboContractCodeFixProvider: CodeFixProvider
     {
         private const string title = "Replace with TurboContract";
 
@@ -24,7 +24,7 @@ namespace ContractFix.CodeContractNonGeneric
         {
             get
             {
-                return ImmutableArray.Create(CodeContractNonGenericAnalyzer.DiagnosticId, DebygAssertAnalyzer.DiagnosticId);
+                return ImmutableArray.Create(ContractToTurboContractAnalyzer.DiagnosticId, DebygAssertAnalyzer.DiagnosticId);
             }
         }
 

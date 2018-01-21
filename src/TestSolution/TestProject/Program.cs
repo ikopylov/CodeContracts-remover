@@ -60,6 +60,19 @@ namespace Nmasa
             throw new NotImplementedException();
         }
     }
+    public class TestImplDeeper : TestImpl
+    {
+        public override void Method1(string val)
+        {
+            base.Method1(val);
+        }
+        public override void Method2(string val)
+        {
+            base.Method2(val);
+        }
+    }
+
+
     public class TestImpl2<TP> : TestAbstractGeneric<TP>, ITestInterfaceAbstract<TP>
     {
         public override void Method4(string val)

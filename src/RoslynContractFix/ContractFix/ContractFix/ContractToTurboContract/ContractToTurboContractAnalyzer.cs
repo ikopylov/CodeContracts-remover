@@ -7,17 +7,16 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
-using System.Linq;
 
-namespace ContractFix.CodeContractGeneric
+namespace ContractFix.ContractToTurboContract
 {
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
-    public class CodeContractGenericAnalyzer : DiagnosticAnalyzer
+    public class ContractToTurboContractAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "CodeContractGenericReplace";
-        private const string Title = "Contract should be replaced with if..throw";
-        private const string MessageFormat = "Should be replaced with if..throw";
-        private const string Description = "with if..throw";
+        public const string DiagnosticId = "CR02_ContractToTurboContractReplace";
+        private const string Title = "Contract should be replaced with TurboContract";
+        private const string MessageFormat = "Should be replaced with TurboContract";
+        private const string Description = "with TurboContract";
         private const string Category = "Usage";
 
         private static DiagnosticDescriptor Rule = new DiagnosticDescriptor(DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: Description);
@@ -32,11 +31,11 @@ namespace ContractFix.CodeContractGeneric
         }
 
 
-        private static bool IsCodeContractToReplace(IInvocationOperation invocation)
+        private static bool IsCodeContractToReplace(Compilation compilation, IInvocationOperation invocation)
         {
-            if (invocation.TargetMethod.ContainingType.ToString() != typeof(System.Diagnostics.Contracts.Contract).FullName)
+            if (!compilation.IsEqualTypes(invocation.TargetMethod.ContainingType, typeof(System.Diagnostics.Contracts.Contract)))
                 return false;
-            if (!invocation.TargetMethod.IsGenericMethod || invocation.TargetMethod.Name != nameof(System.Diagnostics.Contracts.Contract.Requires))
+            if (invocation.TargetMethod.IsGenericMethod && invocation.TargetMethod.Name == nameof(System.Diagnostics.Contracts.Contract.Requires))
                 return false;
 
             return true;
@@ -47,16 +46,13 @@ namespace ContractFix.CodeContractGeneric
             var invocation = (IInvocationOperation)context.Operation;
             if (invocation.TargetMethod.Kind != SymbolKind.Method || !invocation.TargetMethod.IsStatic)
                 return;
-            if (!IsCodeContractToReplace(invocation))
+            if (!IsCodeContractToReplace(context.Compilation, invocation))
                 return;
-            if (invocation.Parent.Kind != OperationKind.ExpressionStatement)
-                return;
+            
 
-            var type = context.ContainingSymbol.ContainingType;
-            if (type == null || type.GetAttributes().Any(o => o.AttributeClass.Name == nameof(System.Diagnostics.Contracts.ContractClassForAttribute)))
-                return;
-
-            context.ReportDiagnostic(Diagnostic.Create(Rule, invocation.Parent.Syntax.GetLocation()));
+            var invocationSyntax = (InvocationExpressionSyntax)invocation.Syntax;
+            if (invocationSyntax.Expression is MemberAccessExpressionSyntax memberAccess)
+                context.ReportDiagnostic(Diagnostic.Create(Rule, memberAccess.Expression.GetLocation()));
         }
     }
 }
