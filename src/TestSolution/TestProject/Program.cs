@@ -39,6 +39,7 @@ namespace Nmasa
     public class TestImpl : TestAbstract, ITestInterface, ITestInterfaceAbstract<int>
     {
         public string Data { get; set; }
+
         [ContractInvariantMethod]
         private void Invariant()
         {
