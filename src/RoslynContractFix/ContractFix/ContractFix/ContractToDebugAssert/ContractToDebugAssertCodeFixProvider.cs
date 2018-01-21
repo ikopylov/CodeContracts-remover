@@ -97,7 +97,7 @@ namespace ContractFix.ContractToDebugAssert
                 return;
 
             var generator = editor.Generator;
-
+           
             var trailingTrivia = nodeToReplace.GetTrailingTrivia();
             var leadingTrivia = nodeToReplace.GetLeadingTrivia();
 

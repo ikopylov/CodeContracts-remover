@@ -11,7 +11,7 @@ using System.Text;
 
 namespace ContractFix
 {
-    [DiagnosticAnalyzer(LanguageNames.CSharp)]
+    //[DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class NameOfAnalyzer : DiagnosticAnalyzer
     {
         public const string DiagnosticId = "CR01_ToNameOfCS";

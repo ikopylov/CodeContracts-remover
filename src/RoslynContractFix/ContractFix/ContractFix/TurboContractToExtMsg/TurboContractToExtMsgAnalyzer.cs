@@ -10,7 +10,7 @@ using System.Text;
 
 namespace ContractFix.TurboContractToExtMsg
 {
-    [DiagnosticAnalyzer(LanguageNames.CSharp)]
+    //[DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class TurboContractToExtMsgAnalyzer : DiagnosticAnalyzer
     {
         public const string DiagnosticId = "CR07_TurboContractExtendedMessageReplace";

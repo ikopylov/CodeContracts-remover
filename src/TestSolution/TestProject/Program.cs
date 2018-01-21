@@ -29,7 +29,7 @@ namespace Nmasa
             Contract.Requires<InvalidOperationException>(data < 100);
             Contract.Requires(val != null);
             System.Diagnostics.Contracts.Contract.Requires(val != null);
-            Contract.Ensures(val == null && Contract.ValueAtReturn(out data) == 1);
+            Contract.Ensures(val == null && Contract.ValueAtReturn(out data) == 1); 
             Contract.Assert(val != null, "Message " + 1.ToString());
             System.Diagnostics.Debug.Assert(val != null);
         }
@@ -38,6 +38,13 @@ namespace Nmasa
 
     public class TestImpl : TestAbstract, ITestInterface, ITestInterfaceAbstract<int>
     {
+        public string Data { get; set; }
+        [ContractInvariantMethod]
+        private void Invariant()
+        {
+            Contract.Invariant(Data != null);
+        }
+
         public override void Method1(string val)
         {
             throw new NotImplementedException();
@@ -157,6 +164,7 @@ namespace Nmasa
         public void Method3(string val)
         {
             Contract.Requires<ArgumentNullException>(val != null);
+            Contract.Ensures(val != null);
             throw new NotImplementedException();
         }
     }

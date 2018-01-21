@@ -9,7 +9,7 @@ using System.Text;
 
 namespace ContractFix.ContractToTurboContract
 {
-    [DiagnosticAnalyzer(LanguageNames.CSharp)]
+    //[DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class DebygAssertAnalyzer : DiagnosticAnalyzer
     {
         public const string DiagnosticId = "CR03_DebugAssertToTurboContractReplace";

@@ -10,7 +10,7 @@ using System.Text;
 
 namespace ContractFix.ContractToTurboContract
 {
-    [DiagnosticAnalyzer(LanguageNames.CSharp)]
+    //[DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class ContractToTurboContractAnalyzer : DiagnosticAnalyzer
     {
         public const string DiagnosticId = "CR02_ContractToTurboContractReplace";
