@@ -60,7 +60,7 @@ namespace ContractFix.EliminateInvariantMethods
 
             var editor = await DocumentEditor.CreateAsync(document, cancellationToken).ConfigureAwait(false);
 
-            editor.RemoveNode(nodeToReplace, SyntaxRemoveOptions.KeepExteriorTrivia);
+            editor.RemoveNode(nodeToReplace, SyntaxRemoveOptions.KeepNoTrivia);
             return editor.GetChangedDocument();
         }
     }
