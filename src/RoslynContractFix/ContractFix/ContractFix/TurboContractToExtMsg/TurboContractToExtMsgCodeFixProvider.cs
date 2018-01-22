@@ -113,7 +113,6 @@ namespace ContractFix.TurboContractToExtMsg
                 debugAssertCallNode = generator.InvocationExpression(
                     generator.MemberAccessExpression(generator.IdentifierName("TurboContract"), contractCallInfo.MethodName),
                     contractCallInfo.Condition,
-                    generator.NullLiteralExpression(),
                     generator.LiteralExpression(contractCallInfo.Condition.ToString()));
             }
             else

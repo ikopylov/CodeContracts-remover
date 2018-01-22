@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis.Operations;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 
 namespace ContractFix.ContractToDebugAssert
@@ -49,6 +50,17 @@ namespace ContractFix.ContractToDebugAssert
             return MethodNamesToFix.Contains(invocation.TargetMethod.Name);
         }
 
+        private static bool IsContractClass(ISymbol containingSymbol)
+        {
+            if (containingSymbol is IMethodSymbol method &&
+                method.ContainingType is INamedTypeSymbol typeSmb)
+            {
+                var attrib = typeSmb.GetAttributes();
+                return attrib.Any(o => o.AttributeClass.Name == nameof(System.Diagnostics.Contracts.ContractClassForAttribute));
+            }
+            return false;
+        }
+
         private static void AnalyzeInvocationOp(OperationAnalysisContext context)
         {
             var invocation = (IInvocationOperation)context.Operation;
@@ -56,7 +68,8 @@ namespace ContractFix.ContractToDebugAssert
                 return;
             if (!IsCodeContractToReplace(context.Compilation, invocation))
                 return;
-            
+            if (IsContractClass(context.ContainingSymbol))
+                return;
 
             var invocationSyntax = (InvocationExpressionSyntax)invocation.Syntax;
             if (invocationSyntax.Expression is MemberAccessExpressionSyntax memberAccess)

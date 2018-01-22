@@ -46,7 +46,22 @@ namespace ContractFix.TurboContractToExtMsg
             if (invocation.TargetMethod.IsGenericMethod)
                 return false;
 
-            return MethodNamesToFix.Contains(invocation.TargetMethod.Name);
+            if (!MethodNamesToFix.Contains(invocation.TargetMethod.Name))
+                return false;
+
+            if (invocation.Arguments.Length >= 3)
+                return false;
+
+            if (invocation.Arguments.Length == 2)
+            {
+                if (invocation.Arguments[1].Syntax is ArgumentSyntax argSynt &&
+                    argSynt.Expression is LiteralExpressionSyntax literal &&
+                    literal.IsKind(SyntaxKind.StringLiteralExpression))
+                    if (literal.Token.ValueText == invocation.Arguments[0].Syntax.ToString())
+                        return false;
+            }
+
+            return true;
         }
 
         private static void AnalyzeInvocationOp(OperationAnalysisContext context)

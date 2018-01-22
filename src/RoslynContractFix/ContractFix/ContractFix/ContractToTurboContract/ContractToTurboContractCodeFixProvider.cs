@@ -24,7 +24,7 @@ namespace ContractFix.ContractToTurboContract
         {
             get
             {
-                return ImmutableArray.Create(ContractToTurboContractAnalyzer.DiagnosticId, DebygAssertAnalyzer.DiagnosticId);
+                return ImmutableArray.Create(ContractToTurboContractAnalyzer.DiagnosticId, ContractToTurboContractAnalyzer.DiagnosticIdWithinCC, DebugAssertAnalyzer.DiagnosticId);
             }
         }
 
