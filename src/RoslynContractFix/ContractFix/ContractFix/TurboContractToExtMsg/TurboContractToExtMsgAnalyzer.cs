@@ -54,11 +54,19 @@ namespace ContractFix.TurboContractToExtMsg
 
             if (invocation.Arguments.Length == 2)
             {
+                if (invocation.Arguments[0].Syntax is ArgumentSyntax arg0Synt &&
+                    arg0Synt.Expression is LiteralExpressionSyntax)
+                {
+                    return false;
+                }
+
                 if (invocation.Arguments[1].Syntax is ArgumentSyntax argSynt &&
                     argSynt.Expression is LiteralExpressionSyntax literal &&
                     literal.IsKind(SyntaxKind.StringLiteralExpression))
+                {
                     if (literal.Token.ValueText == invocation.Arguments[0].Syntax.ToString())
                         return false;
+                }
             }
 
             return true;
