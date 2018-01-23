@@ -8,18 +8,18 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
 
-namespace ContractFix.TurboContractToExtMsg
+namespace ContractFix.TurboContractConditionMessageArg
 {
     //[DiagnosticAnalyzer(LanguageNames.CSharp)]
-    public class TurboContractToExtMsgAnalyzer : DiagnosticAnalyzer
+    public class TurboContractConditionMessageArgAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "CR07_TurboContractExtendedMessageReplace";
-        private const string Title = "TurboContract call can be extended with condition message";
-        private const string MessageFormat = "can be extended with condition message";
-        private const string Description = "with condition message";
+        public const string DiagnosticId = "CR12_TurboContractConditionAsSeparateParameter";
+        private const string Title = "TurboContract call has condition string in message parameter";
+        private const string MessageFormat = "has condition string in message parameter";
+        private const string Description = "TurboContract call has condition string in message parameter";
         private const string Category = "Usage";
 
-        private static DiagnosticDescriptor Rule = new DiagnosticDescriptor(DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Info, isEnabledByDefault: true, description: Description);
+        private static DiagnosticDescriptor Rule = new DiagnosticDescriptor(DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Error, isEnabledByDefault: true, description: Description);
 
         internal static HashSet<string> MethodNamesToFix { get; } = new HashSet<string>()
         {
@@ -54,24 +54,17 @@ namespace ContractFix.TurboContractToExtMsg
 
             if (invocation.Arguments.Length == 2)
             {
-                /*
-                if (invocation.Arguments[0].Syntax is ArgumentSyntax arg0Synt &&
-                    arg0Synt.Expression is LiteralExpressionSyntax)
-                {
-                    return false;
-                }
-
                 if (invocation.Arguments[1].Syntax is ArgumentSyntax argSynt &&
+                    (argSynt.NameColon == null || argSynt.NameColon.Name.Identifier.ValueText != "conditionString") &&
                     argSynt.Expression is LiteralExpressionSyntax literal &&
                     literal.IsKind(SyntaxKind.StringLiteralExpression))
                 {
                     if (literal.Token.ValueText == invocation.Arguments[0].Syntax.ToString())
-                        return false;
-                }*/
-                return false;
+                        return true;
+                }
             }
 
-            return true;
+            return false;
         }
 
         private static void AnalyzeInvocationOp(OperationAnalysisContext context)

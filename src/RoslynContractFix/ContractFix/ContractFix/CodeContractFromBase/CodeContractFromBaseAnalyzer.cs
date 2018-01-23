@@ -16,6 +16,17 @@ namespace ContractFix.CodeContractFromBase
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class CodeContractFromBaseAnalyzer : DiagnosticAnalyzer
     {
+        [Flags]
+        public enum ExtractStatements
+        {
+            Default = 0,
+            TurboContractRequires = 1,
+            DebugAssert = 2,
+            All = TurboContractRequires | DebugAssert
+        }
+
+        public const ExtractStatements ExtractStatementsKind = ExtractStatements.All;
+
         public const string DiagnosticId = "CR05_CodeContractFromBaseRetrieve";
         private const string Title = "Contract can be retrieved from base type";
         private const string MessageFormat = "Requires can be retrieved from base type: \n {0}";
@@ -154,12 +165,67 @@ namespace ContractFix.CodeContractFromBase
 
             return false;
         }
+        private static bool IsTurboRequiresStatement(StatementSyntax statement)
+        {
+            if (statement is ExpressionStatementSyntax exprStatement &&
+                exprStatement.Expression is InvocationExpressionSyntax invocation &&
+                invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+                memberAccess.Name is SimpleNameSyntax nameSyntax &&
+                nameSyntax.Identifier.ValueText == nameof(System.Diagnostics.Contracts.Contract.Requires))
+            {
+                var memberAccessLeftSideStr = memberAccess.Expression.ToString();
+                if (memberAccessLeftSideStr == "TurboContract" || memberAccessLeftSideStr.EndsWith(".TurboContract"))
+                    return true;
+            }
 
-        public static IEnumerable<StatementSyntax> ExtractRequires(MethodDeclarationSyntax method)
+            return false;
+        }
+        private static bool IsDebugAssertStatement(StatementSyntax statement)
+        {
+            if (statement is ExpressionStatementSyntax exprStatement &&
+                exprStatement.Expression is InvocationExpressionSyntax invocation &&
+                invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+                memberAccess.Name is SimpleNameSyntax nameSyntax &&
+                nameSyntax.Identifier.ValueText == nameof(System.Diagnostics.Debug.Assert))
+            {
+                var memberAccessLeftSideStr = memberAccess.Expression.ToString();
+                if (memberAccessLeftSideStr == "Debug" || memberAccessLeftSideStr.EndsWith(".Debug"))
+                    return true;
+            }
+
+            return false;
+        }
+
+        public static IEnumerable<StatementSyntax> ExtractContractRequires(MethodDeclarationSyntax method)
         {
             return method.Body.Statements.Where(o => IsRequiresStatement(o));
         }
-        public static IEnumerable<StatementSyntax> ExtractRequires(IMethodSymbol method, CancellationToken token)
+        public static IEnumerable<StatementSyntax> ExtractTurboRequires(MethodDeclarationSyntax method)
+        {
+            return method.Body.Statements.Where(o => IsTurboRequiresStatement(o));
+        }
+        public static IEnumerable<StatementSyntax> ExtractDebugAssert(MethodDeclarationSyntax method)
+        {
+            return method.Body.Statements.Where(o => IsDebugAssertStatement(o));
+        }
+        public static IEnumerable<StatementSyntax> ExtractRequires(MethodDeclarationSyntax method, ExtractStatements extractStatements)
+        {
+            var statementsToCheck = method.Body.Statements.TakeWhile(o => o is ExpressionStatementSyntax);
+
+            switch (extractStatements)
+            {
+                case ExtractStatements.TurboContractRequires:
+                    return statementsToCheck.Where(o => IsRequiresStatement(o) || IsTurboRequiresStatement(o));
+                case ExtractStatements.DebugAssert:
+                    return statementsToCheck.Where(o => IsRequiresStatement(o) || IsDebugAssertStatement(o));
+                case ExtractStatements.All:
+                    return statementsToCheck.Where(o => IsRequiresStatement(o) || IsDebugAssertStatement(o) || IsTurboRequiresStatement(o));
+                case ExtractStatements.Default:
+                default:
+                    return statementsToCheck.Where(o => IsRequiresStatement(o));
+            }
+        }
+        public static IEnumerable<StatementSyntax> ExtractRequires(IMethodSymbol method, ExtractStatements extractStatements, CancellationToken token)
         {
             var syntax = method.DeclaringSyntaxReferences;
             if (syntax.Length != 1)
@@ -169,12 +235,16 @@ namespace ContractFix.CodeContractFromBase
             if (methodSyntax == null)
                 return Array.Empty<StatementSyntax>();
 
-            return ExtractRequires(methodSyntax);
+            return ExtractRequires(methodSyntax, extractStatements);
+        }
+        public static IEnumerable<StatementSyntax> ExtractRequires(IMethodSymbol method, CancellationToken token)
+        {
+            return ExtractRequires(method, ExtractStatements.Default, token);
         }
 
         private static bool HasRequires(IMethodSymbol method, CancellationToken token)
         {
-            return ExtractRequires(method, token).Any();
+            return ExtractRequires(method, ExtractStatements.Default, token).Any();
         }
 
         private static void RemoveDuplicatedStatements(List<StatementSyntax> list)
@@ -191,13 +261,38 @@ namespace ContractFix.CodeContractFromBase
                 }
             }
         }
-        private static void RemoveOverlappedStatements(List<StatementSyntax> list, List<StatementSyntax> other)
+        private static bool IsEquivalentRequireStatements(StatementSyntax a, StatementSyntax b, bool smart)
+        {
+            if (!smart)
+                return a.IsEquivalentTo(b);
+
+            ExpressionSyntax GetConditionExpression(StatementSyntax st)
+            {
+                if (st is ExpressionStatementSyntax exprStatement &&
+                    exprStatement.Expression is InvocationExpressionSyntax invocation &&
+                    invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+                    memberAccess.Name is SimpleNameSyntax nameSyntax &&
+                    invocation.ArgumentList.Arguments.Count > 0)
+                {
+                    return invocation.ArgumentList.Arguments[0].Expression;
+                }
+                return null;
+            }
+
+            var aCond = GetConditionExpression(a);
+            var bCond = GetConditionExpression(b);
+            if (aCond == null || bCond == null)
+                return false;
+
+            return aCond.IsEquivalentTo(bCond);
+        }
+        private static void RemoveOverlappedStatements(List<StatementSyntax> list, List<StatementSyntax> other, bool smart)
         {
             for (int i = list.Count - 1; i >= 0; i--)
             {
                 for (int j = 0; j < other.Count; j++)
                 {
-                    if (list[i].IsEquivalentTo(other[j]))
+                    if (IsEquivalentRequireStatements(list[i], other[j], smart))
                     {
                         list.RemoveAt(i);
                         break;
@@ -205,12 +300,12 @@ namespace ContractFix.CodeContractFromBase
                 }
             }
         }
-        public static List<StatementSyntax> DeduplicateRequires(List<StatementSyntax> aggregatedRequires, List<StatementSyntax> presentedRequires)
+        public static List<StatementSyntax> DeduplicateRequires(List<StatementSyntax> aggregatedRequires, List<StatementSyntax> presentedRequires, bool smart)
         {
             if (aggregatedRequires.Count == 0)
                 return aggregatedRequires;
             List<StatementSyntax> result = new List<StatementSyntax>(aggregatedRequires);
-            RemoveOverlappedStatements(result, presentedRequires);
+            RemoveOverlappedStatements(result, presentedRequires, smart);
             RemoveDuplicatedStatements(result);
             return result;
         }
@@ -233,7 +328,7 @@ namespace ContractFix.CodeContractFromBase
             if (contractMethods.Count > 0)
             {
                 var requireStatements = contractMethods.SelectMany(o => ExtractRequires(o, context.CancellationToken)).ToList();
-                requireStatements = DeduplicateRequires(requireStatements, ExtractRequires(methodSyntax).ToList());
+                requireStatements = DeduplicateRequires(requireStatements, ExtractRequires(methodSyntax, ExtractStatementsKind).ToList(), ExtractStatementsKind != ExtractStatements.Default);
                 if (requireStatements.Count > 0)
                 {
                     StringBuilder bldr = new StringBuilder();

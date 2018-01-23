@@ -46,6 +46,9 @@ namespace ContractFix.ContractToTurboContract
             if (invocation.TargetMethod.Kind != SymbolKind.Method || !invocation.TargetMethod.IsStatic)
                 return;
 
+            if (context.ContainingSymbol is IMethodSymbol method && method.ContainingType.Name == "TurboContract")
+                return;
+
             if (!IsDebugAssertToReplace(context.Compilation, invocation))
                 return;
 

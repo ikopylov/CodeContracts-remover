@@ -68,7 +68,7 @@ namespace ContractFix.CodeContractFromBase
                 return document;
 
             var requireStatements = contractMethods.SelectMany(o => CodeContractFromBaseAnalyzer.ExtractRequires(o, cancellationToken)).ToList();
-            requireStatements = CodeContractFromBaseAnalyzer.DeduplicateRequires(requireStatements, CodeContractFromBaseAnalyzer.ExtractRequires(methodSyntax).ToList());
+            requireStatements = CodeContractFromBaseAnalyzer.DeduplicateRequires(requireStatements, CodeContractFromBaseAnalyzer.ExtractRequires(methodSyntax, CodeContractFromBaseAnalyzer.ExtractStatementsKind).ToList(), CodeContractFromBaseAnalyzer.ExtractStatementsKind != CodeContractFromBaseAnalyzer.ExtractStatements.Default);
             if (requireStatements.Count == 0)
                 return document;
 

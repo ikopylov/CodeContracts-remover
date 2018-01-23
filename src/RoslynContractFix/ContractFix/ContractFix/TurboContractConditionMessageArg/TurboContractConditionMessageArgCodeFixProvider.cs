@@ -14,12 +14,12 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ContractFix.TurboContractToExtMsg
+namespace ContractFix.TurboContractConditionMessageArg
 {
-    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(TurboContractToExtMsgCodeFixProvider)), Shared]
-    public class TurboContractToExtMsgCodeFixProvider : CodeFixProvider
+    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(TurboContractConditionMessageArgCodeFixProvider)), Shared]
+    public class TurboContractConditionMessageArgCodeFixProvider : CodeFixProvider
     {
-        private const string title = "Extend with condition message";
+        private const string title = "Place condition string in correct argument";
 
         private class ContractCallInfo
         {
@@ -28,11 +28,20 @@ namespace ContractFix.TurboContractToExtMsg
                 MethodName = methodName;
                 Condition = condition;
                 Message = message;
+
+                if (Message != null && 
+                    Message is LiteralExpressionSyntax literalMsg &&
+                    literalMsg.IsKind(SyntaxKind.StringLiteralExpression) &&
+                    literalMsg.Token.ValueText == condition.ToString())
+                {
+                    MessageIsLikeCondition = true;
+                }
             }
 
             public NameSyntax MethodName { get; }
             public ExpressionSyntax Condition { get; }
             public ExpressionSyntax Message { get; }
+            public bool MessageIsLikeCondition { get; }
         }
 
 
@@ -40,7 +49,7 @@ namespace ContractFix.TurboContractToExtMsg
         {
             get
             {
-                return ImmutableArray.Create(TurboContractToExtMsgAnalyzer.DiagnosticId);
+                return ImmutableArray.Create(TurboContractConditionMessageArgAnalyzer.DiagnosticId);
             }
         }
 
@@ -74,7 +83,7 @@ namespace ContractFix.TurboContractToExtMsg
                 node.Expression is InvocationExpressionSyntax invocation &&
                 invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
                 memberAccess.Name is SimpleNameSyntax simpleName &&
-                TurboContractToExtMsgAnalyzer.MethodNamesToFix.Contains(simpleName.Identifier.ValueText) &&
+                TurboContractConditionMessageArgAnalyzer.MethodNamesToFix.Contains(simpleName.Identifier.ValueText) &&
                 invocation.ArgumentList.Arguments.Count > 0 &&
                 invocation.ArgumentList.Arguments[0].Expression is ExpressionSyntax conditionExression)
             {
@@ -107,8 +116,9 @@ namespace ContractFix.TurboContractToExtMsg
             var leadingTrivia = nodeToReplace.GetLeadingTrivia();
 
             SyntaxNode debugAssertCallNode = null;
+     
 
-            if (contractCallInfo.Message == null)
+            if (contractCallInfo.Message == null || contractCallInfo.MessageIsLikeCondition)
             {
                 debugAssertCallNode = generator.InvocationExpression(
                     generator.MemberAccessExpression(generator.IdentifierName("TurboContract"), contractCallInfo.MethodName),
