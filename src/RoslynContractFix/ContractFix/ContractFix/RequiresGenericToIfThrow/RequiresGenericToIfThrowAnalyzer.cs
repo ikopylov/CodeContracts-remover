@@ -14,10 +14,10 @@ namespace ContractFix.RequiresGenericToIfThrow
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class RequiresGenericToIfThrowAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "CR04_RequiresGenericToIfThrow";
-        private const string Title = "Contract should be replaced with if..throw";
-        private const string MessageFormat = "Should be replaced with if..throw";
-        private const string Description = "with if..throw";
+        public const string DiagnosticId = "CR02_RequiresGenericToIfThrow";
+        private const string Title = "Contract.Requires should be replaced with if..throw";
+        private const string MessageFormat = "Contract.Requires should be replaced with if..throw";
+        private const string Description = "Contract.Requires should be replaced with if..throw";
         private const string Category = "Usage";
 
         private static DiagnosticDescriptor Rule = new DiagnosticDescriptor(DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: Description);
@@ -47,13 +47,11 @@ namespace ContractFix.RequiresGenericToIfThrow
             var invocation = (IInvocationOperation)context.Operation;
             if (invocation.TargetMethod.Kind != SymbolKind.Method || !invocation.TargetMethod.IsStatic)
                 return;
-            if (!IsCodeContractToReplace(invocation))
-                return;
             if (invocation.Parent.Kind != OperationKind.ExpressionStatement)
                 return;
-
-            var type = context.ContainingSymbol.ContainingType;
-            if (type == null || type.GetAttributes().Any(o => o.AttributeClass.Name == nameof(System.Diagnostics.Contracts.ContractClassForAttribute)))
+            if (!IsCodeContractToReplace(invocation))
+                return;
+            if (ContractStatementAnalyzer.IsContractClass(context.ContainingSymbol))
                 return;
 
             context.ReportDiagnostic(Diagnostic.Create(Rule, invocation.Parent.Syntax.GetLocation()));

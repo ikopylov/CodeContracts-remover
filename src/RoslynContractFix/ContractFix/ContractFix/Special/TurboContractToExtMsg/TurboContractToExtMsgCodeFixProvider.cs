@@ -14,7 +14,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ContractFix.TurboContractToExtMsg
+namespace ContractFix.Special.TurboContractToExtMsg
 {
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(TurboContractToExtMsgCodeFixProvider)), Shared]
     public class TurboContractToExtMsgCodeFixProvider : CodeFixProvider

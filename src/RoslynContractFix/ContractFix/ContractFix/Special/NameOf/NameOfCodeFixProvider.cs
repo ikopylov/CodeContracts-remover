@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ContractFix
+namespace ContractFix.Special.NameOf
 {
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NameOfCodeFixProvider)), Shared]
     public class NameOfCodeFixProvider: CodeFixProvider

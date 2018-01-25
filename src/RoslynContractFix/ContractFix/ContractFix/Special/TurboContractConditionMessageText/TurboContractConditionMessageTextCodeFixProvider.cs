@@ -14,12 +14,12 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ContractFix.TurboContractConditionMessageArg
+namespace ContractFix.Special.TurboContractConditionMessageText
 {
-    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(TurboContractConditionMessageArgCodeFixProvider)), Shared]
-    public class TurboContractConditionMessageArgCodeFixProvider : CodeFixProvider
+    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(TurboContractConditionMessageTextCodeFixProvider)), Shared]
+    public class TurboContractConditionMessageTextCodeFixProvider : CodeFixProvider
     {
-        private const string title = "Place condition string in correct argument";
+        private const string title = "Make condition string in sync with condition";
 
         private class ContractCallInfo
         {
@@ -28,20 +28,11 @@ namespace ContractFix.TurboContractConditionMessageArg
                 MethodName = methodName;
                 Condition = condition;
                 Message = message;
-
-                if (Message != null && 
-                    Message is LiteralExpressionSyntax literalMsg &&
-                    literalMsg.IsKind(SyntaxKind.StringLiteralExpression) &&
-                    literalMsg.Token.ValueText == condition.ToString())
-                {
-                    MessageIsLikeCondition = true;
-                }
             }
 
             public NameSyntax MethodName { get; }
             public ExpressionSyntax Condition { get; }
             public ExpressionSyntax Message { get; }
-            public bool MessageIsLikeCondition { get; }
         }
 
 
@@ -49,7 +40,7 @@ namespace ContractFix.TurboContractConditionMessageArg
         {
             get
             {
-                return ImmutableArray.Create(TurboContractConditionMessageArgAnalyzer.DiagnosticId);
+                return ImmutableArray.Create(TurboContractConditionMessageTextAnalyzer.DiagnosticId);
             }
         }
 
@@ -83,13 +74,15 @@ namespace ContractFix.TurboContractConditionMessageArg
                 node.Expression is InvocationExpressionSyntax invocation &&
                 invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
                 memberAccess.Name is SimpleNameSyntax simpleName &&
-                TurboContractConditionMessageArgAnalyzer.MethodNamesToFix.Contains(simpleName.Identifier.ValueText) &&
+                TurboContractConditionMessageTextAnalyzer.MethodNamesToFix.Contains(simpleName.Identifier.ValueText) &&
                 invocation.ArgumentList.Arguments.Count > 0 &&
                 invocation.ArgumentList.Arguments[0].Expression is ExpressionSyntax conditionExression)
             {
                 ExpressionSyntax userDesc = null;
                 if (invocation.ArgumentList.Arguments.Count > 1 &&
-                    invocation.ArgumentList.Arguments[1].Expression is ExpressionSyntax userDescExpr)
+                    invocation.ArgumentList.Arguments[1].Expression is ExpressionSyntax userDescExpr &&
+                    (invocation.ArgumentList.Arguments[1].NameColon == null ||
+                    invocation.ArgumentList.Arguments[1].NameColon.Name.Identifier.ValueText != "conditionString"))
                 {
                     userDesc = userDescExpr;
                 }
@@ -118,7 +111,7 @@ namespace ContractFix.TurboContractConditionMessageArg
             SyntaxNode debugAssertCallNode = null;
      
 
-            if (contractCallInfo.Message == null || contractCallInfo.MessageIsLikeCondition)
+            if (contractCallInfo.Message == null)
             {
                 debugAssertCallNode = generator.InvocationExpression(
                     generator.MemberAccessExpression(generator.IdentifierName("TurboContract"), contractCallInfo.MethodName),
@@ -131,7 +124,7 @@ namespace ContractFix.TurboContractConditionMessageArg
                     generator.MemberAccessExpression(generator.IdentifierName("TurboContract"), contractCallInfo.MethodName),
                     contractCallInfo.Condition,
                     contractCallInfo.Message,
-                    generator.LiteralExpression(contractCallInfo.Condition.ToString()));
+                    generator.Argument("conditionString", RefKind.None, generator.LiteralExpression(contractCallInfo.Condition.ToString())));
             }
 
             debugAssertCallNode = debugAssertCallNode.WithTrailingTrivia(trailingTrivia).WithLeadingTrivia(leadingTrivia);

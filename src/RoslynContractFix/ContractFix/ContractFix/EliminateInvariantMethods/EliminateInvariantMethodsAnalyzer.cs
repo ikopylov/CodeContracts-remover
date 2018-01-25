@@ -14,9 +14,9 @@ namespace ContractFix.EliminateInvariantMethods
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class EliminateInvariantMethodsAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "CR09_EliminateInvariantMethods";
+        public const string DiagnosticId = "CR06_EliminateInvariantMethods";
         private const string Title = "Invariant methods can be removed from source code";
-        private const string MessageFormat = "Can be removed from source code";
+        private const string MessageFormat = "Invariant methods can be removed from source code";
         private const string Description = "Invariant methods can be removed from source code";
         private const string Category = "Usage";
 
@@ -32,25 +32,13 @@ namespace ContractFix.EliminateInvariantMethods
         }
 
 
-        private static bool IsInvariantMethod(ISymbol containingSymbol)
-        {
-            if (containingSymbol is IMethodSymbol method)
-            {
-                var attrib = method.GetAttributes();
-                return attrib.Any(o => o.AttributeClass.Name == nameof(System.Diagnostics.Contracts.ContractInvariantMethodAttribute));
-            }
-            return false;
-        }
-
-
         private static void AnalyzeMethodDeclaration(CodeBlockAnalysisContext context)
         {
             MethodDeclarationSyntax methodSyntax = context.CodeBlock as MethodDeclarationSyntax;
             IMethodSymbol method = context.OwningSymbol as IMethodSymbol;
             if (method == null || methodSyntax == null)
                 return;
-
-            if (!IsInvariantMethod(method))
+            if (!ContractStatementAnalyzer.IsInvariantMethod(method))
                 return;
 
             context.ReportDiagnostic(Diagnostic.Create(Rule, methodSyntax.Identifier.GetLocation()));

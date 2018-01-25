@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
 
-namespace ContractFix.ContractToTurboContract
+namespace ContractFix.Special.ContractToTurboContract
 {
     //[DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class DebugAssertAnalyzer : DiagnosticAnalyzer

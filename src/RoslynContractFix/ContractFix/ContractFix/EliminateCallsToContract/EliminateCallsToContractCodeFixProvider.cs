@@ -19,7 +19,7 @@ namespace ContractFix.EliminateCallsToContract
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(EliminateCallsToContractCodeFixProvider)), Shared]
     public class EliminateCallsToContractCodeFixProvider : CodeFixProvider
     {
-        private const string title = "Remove Contract calls from code";
+        private const string title = "Remove Contract call from code";
 
 
         public sealed override ImmutableArray<string> FixableDiagnosticIds

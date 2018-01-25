@@ -14,10 +14,10 @@ namespace ContractFix.ContractToDebugAssert
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class ContractToDebugAssertAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "CR06_ContractToDebugAssertReplace";
-        private const string Title = "Contract should be replaced with Debug.Assert";
-        private const string MessageFormat = "Should be replaced with Debug.Assert";
-        private const string Description = "with Debug.Assert";
+        public const string DiagnosticId = "CR03_ContractToDebugAssertReplace";
+        private const string Title = "Contract call should be replaced with Debug.Assert";
+        private const string MessageFormat = "Contract call should be replaced with Debug.Assert";
+        private const string Description = "Contract call should be replaced with Debug.Assert";
         private const string Category = "Usage";
 
         private static DiagnosticDescriptor Rule = new DiagnosticDescriptor(DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: Description);
@@ -50,17 +50,6 @@ namespace ContractFix.ContractToDebugAssert
             return MethodNamesToFix.Contains(invocation.TargetMethod.Name);
         }
 
-        private static bool IsContractClass(ISymbol containingSymbol)
-        {
-            if (containingSymbol is IMethodSymbol method &&
-                method.ContainingType is INamedTypeSymbol typeSmb)
-            {
-                var attrib = typeSmb.GetAttributes();
-                return attrib.Any(o => o.AttributeClass.Name == nameof(System.Diagnostics.Contracts.ContractClassForAttribute));
-            }
-            return false;
-        }
-
         private static void AnalyzeInvocationOp(OperationAnalysisContext context)
         {
             var invocation = (IInvocationOperation)context.Operation;
@@ -68,7 +57,7 @@ namespace ContractFix.ContractToDebugAssert
                 return;
             if (!IsCodeContractToReplace(context.Compilation, invocation))
                 return;
-            if (IsContractClass(context.ContainingSymbol))
+            if (ContractStatementAnalyzer.IsContractClass(context.ContainingSymbol))
                 return;
 
             var invocationSyntax = (InvocationExpressionSyntax)invocation.Syntax;

@@ -21,18 +21,6 @@ namespace ContractFix.ContractToDebugAssert
     {
         private const string title = "Replace with Debug.Assert";
 
-        private class ContractCallInfo
-        {
-            public ContractCallInfo(ExpressionSyntax condition, ExpressionSyntax message)
-            {
-                Condition = condition;
-                Message = message;
-            }
-
-            public ExpressionSyntax Condition { get; }
-            public ExpressionSyntax Message { get; }
-        }
-
 
         public sealed override ImmutableArray<string> FixableDiagnosticIds
         {
@@ -65,36 +53,14 @@ namespace ContractFix.ContractToDebugAssert
                 context.Diagnostics);
         }
 
-
-        private static ContractCallInfo AnalyzeContractCallStatement(ExpressionStatementSyntax node)
-        {
-            if (node != null &&
-                node.Expression is InvocationExpressionSyntax invocation &&
-                invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                memberAccess.Name is SimpleNameSyntax simpleName &&
-                ContractToDebugAssertAnalyzer.MethodNamesToFix.Contains(simpleName.Identifier.ValueText) &&
-                invocation.ArgumentList.Arguments.Count > 0 &&
-                invocation.ArgumentList.Arguments[0].Expression is ExpressionSyntax conditionExression)
-            {
-                ExpressionSyntax userDesc = null;
-                if (invocation.ArgumentList.Arguments.Count > 1 &&
-                    invocation.ArgumentList.Arguments[1].Expression is ExpressionSyntax userDescExpr)
-                {
-                    userDesc = userDescExpr;
-                }
-
-                return new ContractCallInfo(conditionExression, userDesc);
-            }
-
-
-            return null;
-        }
-
         internal static void ReplaceWithDebugAssert(DocumentEditor editor, SyntaxNode nodeToReplace)
         {
-            var contractCallInfo = AnalyzeContractCallStatement(nodeToReplace.Parent as ExpressionStatementSyntax);
-            if (contractCallInfo == null)
+            ContractInvocationInfo contractCallInfo = null;
+            if (!ContractStatementAnalyzer.ParseInvocation(nodeToReplace.Parent as ExpressionStatementSyntax, out contractCallInfo) ||
+                !contractCallInfo.IsContractType || !ContractToDebugAssertAnalyzer.MethodNamesToFix.Contains(contractCallInfo.MethodNameAsString))
+            {
                 return;
+            }
 
             var generator = editor.Generator;
            

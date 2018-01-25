@@ -19,20 +19,6 @@ namespace ContractFix.RequiresGenericToIfThrow
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(RequiresGenericToIfThrowCodeFixProvider)), Shared]
     public class RequiresGenericToIfThrowCodeFixProvider : CodeFixProvider
     {
-        private class RequireInfo
-        {
-            public RequireInfo(IdentifierNameSyntax exception, ExpressionSyntax condition, ExpressionSyntax userDescription)
-            {
-                Exception = exception;
-                Condition = condition;
-                UserDescription = userDescription;
-            }
-
-            public IdentifierNameSyntax Exception { get; }
-            public ExpressionSyntax Condition { get; }
-            public ExpressionSyntax UserDescription { get; }
-        }
-
         private const string title = "Replace with if..throw";
 
         public sealed override ImmutableArray<string> FixableDiagnosticIds
@@ -65,37 +51,6 @@ namespace ContractFix.RequiresGenericToIfThrow
                 context.Diagnostics);
         }
 
-
-
-        private static RequireInfo AnalyzeRequireStatement(SyntaxNode node)
-        {
-            var childNodes = node.ChildNodes().ToList();
-            if (childNodes.Count != 1)
-                return null;
-            
-            if (childNodes[0] is InvocationExpressionSyntax invocation &&
-                invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                memberAccess.Name is GenericNameSyntax genericName &&
-                genericName.Identifier.ValueText == nameof(System.Diagnostics.Contracts.Contract.Requires) &&
-                genericName.TypeArgumentList.Arguments.Count == 1 &&
-                genericName.TypeArgumentList.Arguments[0] is IdentifierNameSyntax exceptionTypeIdentifier &&
-                invocation.ArgumentList.Arguments.Count > 0 &&
-                invocation.ArgumentList.Arguments[0].Expression is ExpressionSyntax conditionExression)
-            {
-                ExpressionSyntax userDesc = null;
-                if (invocation.ArgumentList.Arguments.Count > 1 &&
-                    invocation.ArgumentList.Arguments[1].Expression is ExpressionSyntax userDescExpr)
-                {
-                    userDesc = userDescExpr;
-                }
-
-                return new RequireInfo(exceptionTypeIdentifier, conditionExression, userDesc);
-            }
-
-
-            return null;
-        }
-
         private static ExpressionSyntax SmartNotExpression(ExpressionSyntax expr, SyntaxGenerator generator)
         {
             if (expr is BinaryExpressionSyntax binary)
@@ -121,7 +76,7 @@ namespace ContractFix.RequiresGenericToIfThrow
         }
 
 
-        private static ExpressionSyntax BuildThrowExpr(IdentifierNameSyntax exception, ExpressionSyntax condition, ExpressionSyntax message, IdentifierNameSyntax parameter, SemanticModel semanticModel, SyntaxGenerator generator, CancellationToken cancellationToken)
+        private static ExpressionSyntax BuildThrowExpr(NameSyntax exception, ExpressionSyntax condition, ExpressionSyntax message, IdentifierNameSyntax parameter, SemanticModel semanticModel, SyntaxGenerator generator, CancellationToken cancellationToken)
         {
             bool IsParamArg(IParameterSymbol symbol)
             {
@@ -257,15 +212,17 @@ namespace ContractFix.RequiresGenericToIfThrow
             var editor = await DocumentEditor.CreateAsync(document, cancellationToken).ConfigureAwait(false);
             var generator = editor.Generator;
 
-            var requireInfo = AnalyzeRequireStatement(nodeToReplace);
-            if (requireInfo == null)
+            ContractInvocationInfo requireInfo = null;
+            if (!ContractStatementAnalyzer.ParseInvocation(nodeToReplace as StatementSyntax, out requireInfo) || !requireInfo.IsContractType || requireInfo.ExceptionType == null)
+            {
                 return document;
+            }
 
             var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
 
             var condition = SmartNotExpression(requireInfo.Condition, generator);
             var argument = FindArgument(requireInfo.Condition, semanticModel, cancellationToken);
-            var exception = BuildThrowExpr(requireInfo.Exception, requireInfo.Condition, requireInfo.UserDescription, argument, semanticModel, generator, cancellationToken);
+            var exception = BuildThrowExpr(requireInfo.ExceptionType, requireInfo.Condition, requireInfo.Message, argument, semanticModel, generator, cancellationToken);
 
 
             var trailingTrivia = nodeToReplace.GetTrailingTrivia();

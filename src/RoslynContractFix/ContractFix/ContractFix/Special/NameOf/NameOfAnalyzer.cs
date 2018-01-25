@@ -9,7 +9,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 
-namespace ContractFix
+namespace ContractFix.Special.NameOf
 {
     //[DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class NameOfAnalyzer : DiagnosticAnalyzer

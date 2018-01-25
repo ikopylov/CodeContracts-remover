@@ -20,17 +20,17 @@ namespace ContractFix.CodeContractFromBase
         public enum ExtractStatements
         {
             Default = 0,
-            TurboContractRequires = 1,
+            CustomContractRequires = 1,
             DebugAssert = 2,
-            All = TurboContractRequires | DebugAssert
+            All = CustomContractRequires | DebugAssert
         }
 
         public const ExtractStatements ExtractStatementsKind = ExtractStatements.All;
 
-        public const string DiagnosticId = "CR05_CodeContractFromBaseRetrieve";
-        private const string Title = "Contract can be retrieved from base type";
+        public const string DiagnosticId = "CR01_RetrieveCodeContractFromBase";
+        private const string Title = "Contract.Requires can be retrieved from base type/contract class";
         private const string MessageFormat = "Requires can be retrieved from base type: \n {0}";
-        private const string Description = "can be retrieved from base type";
+        private const string Description = "Contract.Requires can be retrieved from base type/contract class";
         private const string Category = "Usage";
 
         private static DiagnosticDescriptor Rule = new DiagnosticDescriptor(DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: Description);
@@ -152,48 +152,21 @@ namespace ContractFix.CodeContractFromBase
 
         private static bool IsRequiresStatement(StatementSyntax statement)
         {
-            if (statement is ExpressionStatementSyntax exprStatement &&
-                exprStatement.Expression is InvocationExpressionSyntax invocation &&
-                invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                memberAccess.Name is SimpleNameSyntax nameSyntax &&
-                nameSyntax.Identifier.ValueText == nameof(System.Diagnostics.Contracts.Contract.Requires))
-            {
-                var memberAccessLeftSideStr = memberAccess.Expression.ToString();
-                if (memberAccessLeftSideStr == "Contract" || memberAccessLeftSideStr.EndsWith(".Contract"))
-                    return true;
-            }
-
-            return false;
+            return ContractStatementAnalyzer.ParseInvocation(statement, out var invocationInfo) &&
+                invocationInfo.MethodNameAsString == "Requires" &&
+                invocationInfo.IsContractType;
         }
         private static bool IsTurboRequiresStatement(StatementSyntax statement)
         {
-            if (statement is ExpressionStatementSyntax exprStatement &&
-                exprStatement.Expression is InvocationExpressionSyntax invocation &&
-                invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                memberAccess.Name is SimpleNameSyntax nameSyntax &&
-                nameSyntax.Identifier.ValueText == nameof(System.Diagnostics.Contracts.Contract.Requires))
-            {
-                var memberAccessLeftSideStr = memberAccess.Expression.ToString();
-                if (memberAccessLeftSideStr == "TurboContract" || memberAccessLeftSideStr.EndsWith(".TurboContract"))
-                    return true;
-            }
-
-            return false;
+            return ContractStatementAnalyzer.ParseInvocation(statement, out var invocationInfo) &&
+                invocationInfo.MethodNameAsString == "Requires" &&
+                invocationInfo.IsSpecialContractType;
         }
         private static bool IsDebugAssertStatement(StatementSyntax statement)
         {
-            if (statement is ExpressionStatementSyntax exprStatement &&
-                exprStatement.Expression is InvocationExpressionSyntax invocation &&
-                invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                memberAccess.Name is SimpleNameSyntax nameSyntax &&
-                nameSyntax.Identifier.ValueText == nameof(System.Diagnostics.Debug.Assert))
-            {
-                var memberAccessLeftSideStr = memberAccess.Expression.ToString();
-                if (memberAccessLeftSideStr == "Debug" || memberAccessLeftSideStr.EndsWith(".Debug"))
-                    return true;
-            }
-
-            return false;
+            return ContractStatementAnalyzer.ParseInvocation(statement, out var invocationInfo) &&
+                invocationInfo.MethodNameAsString == "Assert" &&
+                invocationInfo.IsDebugType;
         }
 
         public static IEnumerable<StatementSyntax> ExtractContractRequires(MethodDeclarationSyntax method)
@@ -214,7 +187,7 @@ namespace ContractFix.CodeContractFromBase
 
             switch (extractStatements)
             {
-                case ExtractStatements.TurboContractRequires:
+                case ExtractStatements.CustomContractRequires:
                     return statementsToCheck.Where(o => IsRequiresStatement(o) || IsTurboRequiresStatement(o));
                 case ExtractStatements.DebugAssert:
                     return statementsToCheck.Where(o => IsRequiresStatement(o) || IsDebugAssertStatement(o));
@@ -266,21 +239,8 @@ namespace ContractFix.CodeContractFromBase
             if (!smart)
                 return a.IsEquivalentTo(b);
 
-            ExpressionSyntax GetConditionExpression(StatementSyntax st)
-            {
-                if (st is ExpressionStatementSyntax exprStatement &&
-                    exprStatement.Expression is InvocationExpressionSyntax invocation &&
-                    invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                    memberAccess.Name is SimpleNameSyntax nameSyntax &&
-                    invocation.ArgumentList.Arguments.Count > 0)
-                {
-                    return invocation.ArgumentList.Arguments[0].Expression;
-                }
-                return null;
-            }
-
-            var aCond = GetConditionExpression(a);
-            var bCond = GetConditionExpression(b);
+            var aCond = ContractStatementAnalyzer.ParseInvocation(a, out var aInv) ? aInv.Condition : null;
+            var bCond = ContractStatementAnalyzer.ParseInvocation(b, out var bInv) ? bInv.Condition : null;
             if (aCond == null || bCond == null)
                 return false;
 

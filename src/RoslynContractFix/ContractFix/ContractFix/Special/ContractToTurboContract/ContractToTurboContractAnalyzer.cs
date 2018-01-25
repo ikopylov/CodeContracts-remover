@@ -9,7 +9,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 
-namespace ContractFix.ContractToTurboContract
+namespace ContractFix.Special.ContractToTurboContract
 {
     //[DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class ContractToTurboContractAnalyzer : DiagnosticAnalyzer

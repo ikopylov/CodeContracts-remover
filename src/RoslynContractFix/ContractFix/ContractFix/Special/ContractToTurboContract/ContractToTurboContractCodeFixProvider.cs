@@ -13,7 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ContractFix.ContractToTurboContract
+namespace ContractFix.Special.ContractToTurboContract
 {
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ContractToTurboContractCodeFixProvider)), Shared]
     public class ContractToTurboContractCodeFixProvider: CodeFixProvider

@@ -14,9 +14,9 @@ namespace ContractFix.EliminateContractClass
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class EliminateContractClassAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "CR10_EliminateContractClass";
+        public const string DiagnosticId = "CR05_EliminateContractClass";
         private const string Title = "Contract class can be removed from source code";
-        private const string MessageFormat = "Can be removed from source code";
+        private const string MessageFormat = "Contract class can be removed from source code";
         private const string Description = "Contract class can be removed from source code";
         private const string Category = "Usage";
 
@@ -32,21 +32,12 @@ namespace ContractFix.EliminateContractClass
         }
 
 
-        private static bool IsContractClass(INamedTypeSymbol typeSmb)
-        {
-            var attrib = typeSmb.GetAttributes();
-            return attrib.Any(o => o.AttributeClass.Name == nameof(System.Diagnostics.Contracts.ContractClassForAttribute));
-        }
-
-
         private static void AnalyzeClassDeclaration(SymbolAnalysisContext context)
         {
             var namedType = context.Symbol as INamedTypeSymbol;
-            if (namedType == null)
+            if (namedType == null || namedType.TypeKind != TypeKind.Class)
                 return;
-            if (namedType.TypeKind != TypeKind.Class)
-                return;
-            if (!IsContractClass(namedType))
+            if (!ContractStatementAnalyzer.IsContractClass(namedType))
                 return;
 
             foreach (var syntax in namedType.DeclaringSyntaxReferences)

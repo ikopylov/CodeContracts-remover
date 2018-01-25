@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
 
-namespace ContractFix.TurboContractConditionMessageArg
+namespace ContractFix.Special.TurboContractConditionMessageArg
 {
     //[DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class TurboContractConditionMessageArgAnalyzer : DiagnosticAnalyzer
