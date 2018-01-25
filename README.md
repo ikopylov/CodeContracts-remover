@@ -9,6 +9,11 @@ List of provided analyzers and code fixes (in the order of application):
 - __CR05_EliminateContractClass__ - indicates that Contract class (class that marked with ```ContractClassForAttribute```) can be removed from source code;
 - __CR06_EliminateInvariantMethods__ - indicates that Contract invariant method (method marked with ```ContractInvariantMethodAttribute```) can be removed from source code.
 
+## How to use
+
+Download compiled version of library from _binary_ folder or compile it from sources.
+Add ContractRemover.dll as roslyn analyzer to your project.
+Apply all fixes in the order stated above.
 
 ## Examples
 

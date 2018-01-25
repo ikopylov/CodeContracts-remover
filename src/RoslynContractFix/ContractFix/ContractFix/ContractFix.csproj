@@ -4,21 +4,22 @@
     <TargetFramework>netstandard1.3</TargetFramework>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <AssemblyName>ContractRemover</AssemblyName>
   </PropertyGroup>
   
   <PropertyGroup>
-    <PackageId>ContractFix</PackageId>
-    <PackageVersion>1.0.0.0</PackageVersion>
-    <Authors>Pirania</Authors>
-    <PackageLicenseUrl>http://LICENSE_URL_HERE_OR_DELETE_THIS_LINE</PackageLicenseUrl>
-    <PackageProjectUrl>http://PROJECT_URL_HERE_OR_DELETE_THIS_LINE</PackageProjectUrl>
-    <PackageIconUrl>http://ICON_URL_HERE_OR_DELETE_THIS_LINE</PackageIconUrl>
-    <RepositoryUrl>http://REPOSITORY_URL_HERE_OR_DELETE_THIS_LINE</RepositoryUrl>
+    <PackageId>ContractRemover</PackageId>
+    <PackageVersion>1.0.0</PackageVersion>
+    <Authors>Qoollo</Authors>
+    <PackageLicenseUrl>https://github.com/ikopylov/CodeContracts-remover/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/ikopylov/CodeContracts-remover</PackageProjectUrl>
+    <PackageIconUrl></PackageIconUrl>
+    <RepositoryUrl>https://github.com/ikopylov/CodeContracts-remover</RepositoryUrl>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <Description>ContractFix</Description>
-    <PackageReleaseNotes>Summary of changes made in this release of the package.</PackageReleaseNotes>
+    <Description>Code Fixes for Roslyn that remove CodeContracts from source code </Description>
+    <PackageReleaseNotes></PackageReleaseNotes>
     <Copyright>Copyright</Copyright>
-    <PackageTags>ContractFix, analyzers</PackageTags>
+    <PackageTags>CodeContracts, analyzers</PackageTags>
     <NoPackageAnalysis>true</NoPackageAnalysis>
   </PropertyGroup>
    
