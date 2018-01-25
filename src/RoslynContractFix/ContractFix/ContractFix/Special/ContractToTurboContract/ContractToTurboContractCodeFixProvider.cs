@@ -55,7 +55,7 @@ namespace ContractFix.Special.ContractToTurboContract
             var trailingTrivia = nodeToReplace.GetTrailingTrivia();
             var leadingTrivia = nodeToReplace.GetLeadingTrivia();
 
-            var turboIdentifier = editor.Generator.IdentifierName("TurboContract")
+            var turboIdentifier = editor.Generator.IdentifierName(ContractStatementAnalyzer.SpecialContractClass)
                 .WithTrailingTrivia(trailingTrivia)
                 .WithLeadingTrivia(leadingTrivia);
 
@@ -66,7 +66,7 @@ namespace ContractFix.Special.ContractToTurboContract
         {
             var editor = await DocumentEditor.CreateAsync(document, cancellationToken).ConfigureAwait(false);
 
-            Helpers.AddUsing(editor, "Qoollo.Turbo", nodeToReplace.SpanStart);
+            Helpers.AddUsing(editor, ContractStatementAnalyzer.SpecialContractClassNamespace, nodeToReplace.SpanStart);
             ReplaceWithTurboContract(editor, nodeToReplace);
             return editor.GetChangedDocument();
         }
@@ -96,7 +96,7 @@ namespace ContractFix.Special.ContractToTurboContract
             var editor = await DocumentEditor.CreateAsync(document, cancellationToken).ConfigureAwait(false);
             var generator = editor.Generator;
 
-            Helpers.AddUsing(editor, "Qoollo.Turbo", nodesToReplace[0].SpanStart);
+            Helpers.AddUsing(editor, ContractStatementAnalyzer.SpecialContractClassNamespace, nodesToReplace[0].SpanStart);
 
             foreach (var node in nodesToReplace)
                 ContractToTurboContractCodeFixProvider.ReplaceWithTurboContract(editor, node);

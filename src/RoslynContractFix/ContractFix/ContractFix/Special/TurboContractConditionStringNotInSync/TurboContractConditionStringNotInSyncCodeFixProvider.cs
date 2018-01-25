@@ -14,33 +14,18 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ContractFix.Special.TurboContractConditionMessageText
+namespace ContractFix.Special.TurboContractConditionStringNotInSync
 {
-    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(TurboContractConditionMessageTextCodeFixProvider)), Shared]
-    public class TurboContractConditionMessageTextCodeFixProvider : CodeFixProvider
+    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(TurboContractConditionStringNotInSyncCodeFixProvider)), Shared]
+    public class TurboContractConditionStringNotInSyncCodeFixProvider : CodeFixProvider
     {
         private const string title = "Make condition string in sync with condition";
-
-        private class ContractCallInfo
-        {
-            public ContractCallInfo(NameSyntax methodName, ExpressionSyntax condition, ExpressionSyntax message)
-            {
-                MethodName = methodName;
-                Condition = condition;
-                Message = message;
-            }
-
-            public NameSyntax MethodName { get; }
-            public ExpressionSyntax Condition { get; }
-            public ExpressionSyntax Message { get; }
-        }
-
 
         public sealed override ImmutableArray<string> FixableDiagnosticIds
         {
             get
             {
-                return ImmutableArray.Create(TurboContractConditionMessageTextAnalyzer.DiagnosticId);
+                return ImmutableArray.Create(TurboContractConditionStringNotInSyncAnalyzer.DiagnosticId);
             }
         }
 
@@ -66,34 +51,6 @@ namespace ContractFix.Special.TurboContractConditionMessageText
                 context.Diagnostics);
         }
 
-
-
-        private static ContractCallInfo AnalyzeContractCallStatement(ExpressionStatementSyntax node)
-        {
-            if (node != null &&
-                node.Expression is InvocationExpressionSyntax invocation &&
-                invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                memberAccess.Name is SimpleNameSyntax simpleName &&
-                TurboContractConditionMessageTextAnalyzer.MethodNamesToFix.Contains(simpleName.Identifier.ValueText) &&
-                invocation.ArgumentList.Arguments.Count > 0 &&
-                invocation.ArgumentList.Arguments[0].Expression is ExpressionSyntax conditionExression)
-            {
-                ExpressionSyntax userDesc = null;
-                if (invocation.ArgumentList.Arguments.Count > 1 &&
-                    invocation.ArgumentList.Arguments[1].Expression is ExpressionSyntax userDescExpr &&
-                    (invocation.ArgumentList.Arguments[1].NameColon == null ||
-                    invocation.ArgumentList.Arguments[1].NameColon.Name.Identifier.ValueText != "conditionString"))
-                {
-                    userDesc = userDescExpr;
-                }
-
-                return new ContractCallInfo(simpleName, conditionExression, userDesc);
-            }
-
-
-            return null;
-        }
-
         private static async Task<Document> ReplaceWithTurboContract(Document document, SyntaxNode nodeToReplace, string stringText, CancellationToken cancellationToken)
         {
             var editor = await DocumentEditor.CreateAsync(document, cancellationToken).ConfigureAwait(false);
@@ -101,9 +58,12 @@ namespace ContractFix.Special.TurboContractConditionMessageText
 
             var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
 
-            var contractCallInfo = AnalyzeContractCallStatement(nodeToReplace.Parent as ExpressionStatementSyntax);
-            if (contractCallInfo == null)
+            ContractInvocationInfo contractCallInfo = null;
+            if (!ContractStatementAnalyzer.ParseInvocation(nodeToReplace.Parent as ExpressionStatementSyntax, out contractCallInfo) ||
+                !contractCallInfo.IsSpecialContractType || !TurboContractConditionStringNotInSyncAnalyzer.MethodNamesToFix.Contains(contractCallInfo.MethodNameAsString))
+            {
                 return document;
+            }
 
             var trailingTrivia = nodeToReplace.GetTrailingTrivia();
             var leadingTrivia = nodeToReplace.GetLeadingTrivia();
@@ -114,14 +74,14 @@ namespace ContractFix.Special.TurboContractConditionMessageText
             if (contractCallInfo.Message == null)
             {
                 debugAssertCallNode = generator.InvocationExpression(
-                    generator.MemberAccessExpression(generator.IdentifierName("TurboContract"), contractCallInfo.MethodName),
+                    generator.MemberAccessExpression(generator.IdentifierName(ContractStatementAnalyzer.SpecialContractClass), contractCallInfo.MethodName),
                     contractCallInfo.Condition,
                     generator.Argument("conditionString", RefKind.None, generator.LiteralExpression(contractCallInfo.Condition.ToString())));
             }
             else
             {
                 debugAssertCallNode = generator.InvocationExpression(
-                    generator.MemberAccessExpression(generator.IdentifierName("TurboContract"), contractCallInfo.MethodName),
+                    generator.MemberAccessExpression(generator.IdentifierName(ContractStatementAnalyzer.SpecialContractClass), contractCallInfo.MethodName),
                     contractCallInfo.Condition,
                     contractCallInfo.Message,
                     generator.Argument("conditionString", RefKind.None, generator.LiteralExpression(contractCallInfo.Condition.ToString())));

@@ -8,14 +8,14 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
 
-namespace ContractFix.Special.TurboContractConditionMessageArg
+namespace ContractFix.Special.TurboContractConditionStringIncorrectArg
 {
     //[DiagnosticAnalyzer(LanguageNames.CSharp)]
-    public class TurboContractConditionMessageArgAnalyzer : DiagnosticAnalyzer
+    public class TurboContractConditionStringIncorrectArgAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "CR12_TurboContractConditionAsSeparateParameter";
+        public const string DiagnosticId = "CRS12_TurboContractConditionStringInSeparateParameter";
         private const string Title = "TurboContract call has condition string in message parameter";
-        private const string MessageFormat = "has condition string in message parameter";
+        private const string MessageFormat = "TurboContract call has condition string in message parameter";
         private const string Description = "TurboContract call has condition string in message parameter";
         private const string Category = "Usage";
 
@@ -40,7 +40,7 @@ namespace ContractFix.Special.TurboContractConditionMessageArg
 
         private static bool IsCodeContractToReplace(Compilation compilation, IInvocationOperation invocation)
         {
-            if (invocation.TargetMethod.ContainingType.Name != "TurboContract")
+            if (invocation.TargetMethod.ContainingType.Name != ContractStatementAnalyzer.SpecialContractClass)
                 return false;
 
             if (invocation.TargetMethod.IsGenericMethod)

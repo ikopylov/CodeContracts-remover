@@ -14,11 +14,11 @@ namespace ContractFix.Special.ContractToTurboContract
     //[DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class ContractToTurboContractAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "CR02_ContractToTurboContractReplace";
-        public const string DiagnosticIdWithinCC = "CR11_ContractToTurboContractReplaceWitihinContractClass";
+        public const string DiagnosticId = "CRS08_ContractToTurboContractReplace";
+        public const string DiagnosticIdWithinCC = "CRS09_ContractToTurboContractReplaceWitihinContractClass";
         private const string Title = "Contract should be replaced with TurboContract";
-        private const string MessageFormat = "Should be replaced with TurboContract";
-        private const string Description = "with TurboContract";
+        private const string MessageFormat = "Contract should be replaced with TurboContract";
+        private const string Description = "Contract should be replaced with TurboContract";
         private const string Category = "Usage";
 
         private static DiagnosticDescriptor Rule = new DiagnosticDescriptor(DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: Description);
@@ -45,16 +45,6 @@ namespace ContractFix.Special.ContractToTurboContract
             return true;
         }
 
-        private static bool IsContractClass(ISymbol containingSymbol)
-        {
-            if (containingSymbol is IMethodSymbol method &&
-                method.ContainingType is INamedTypeSymbol typeSmb)
-            {
-                var attrib = typeSmb.GetAttributes();
-                return attrib.Any(o => o.AttributeClass.Name == nameof(System.Diagnostics.Contracts.ContractClassForAttribute));
-            }
-            return false;
-        }
 
         private static void AnalyzeInvocationOp(OperationAnalysisContext context)
         {
@@ -65,7 +55,7 @@ namespace ContractFix.Special.ContractToTurboContract
                 return;
 
             DiagnosticDescriptor rule = Rule;
-            if (IsContractClass(context.ContainingSymbol))
+            if (ContractStatementAnalyzer.IsContractClass(context.ContainingSymbol))
                 rule = RuleWithinCC;
 
 

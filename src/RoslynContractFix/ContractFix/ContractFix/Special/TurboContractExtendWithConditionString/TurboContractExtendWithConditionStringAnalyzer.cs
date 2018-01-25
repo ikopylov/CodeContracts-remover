@@ -8,15 +8,15 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
 
-namespace ContractFix.Special.TurboContractToExtMsg
+namespace ContractFix.Special.TurboContractExtendWithConditionString
 {
     //[DiagnosticAnalyzer(LanguageNames.CSharp)]
-    public class TurboContractToExtMsgAnalyzer : DiagnosticAnalyzer
+    public class TurboContractExtendWithConditionStringAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "CR07_TurboContractExtendedMessageReplace";
+        public const string DiagnosticId = "CRS11_TurboContractExtendWithConditionString";
         private const string Title = "TurboContract call can be extended with condition message";
-        private const string MessageFormat = "can be extended with condition message";
-        private const string Description = "with condition message";
+        private const string MessageFormat = "TurboContract call can be extended with condition message";
+        private const string Description = "TurboContract call can be extended with condition message";
         private const string Category = "Usage";
 
         private static DiagnosticDescriptor Rule = new DiagnosticDescriptor(DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Info, isEnabledByDefault: true, description: Description);
@@ -40,7 +40,7 @@ namespace ContractFix.Special.TurboContractToExtMsg
 
         private static bool IsCodeContractToReplace(Compilation compilation, IInvocationOperation invocation)
         {
-            if (invocation.TargetMethod.ContainingType.Name != "TurboContract")
+            if (invocation.TargetMethod.ContainingType.Name != ContractStatementAnalyzer.SpecialContractClass)
                 return false;
 
             if (invocation.TargetMethod.IsGenericMethod)
@@ -49,27 +49,8 @@ namespace ContractFix.Special.TurboContractToExtMsg
             if (!MethodNamesToFix.Contains(invocation.TargetMethod.Name))
                 return false;
 
-            if (invocation.Arguments.Length >= 3)
+            if (invocation.Arguments.Length >= 2)
                 return false;
-
-            if (invocation.Arguments.Length == 2)
-            {
-                /*
-                if (invocation.Arguments[0].Syntax is ArgumentSyntax arg0Synt &&
-                    arg0Synt.Expression is LiteralExpressionSyntax)
-                {
-                    return false;
-                }
-
-                if (invocation.Arguments[1].Syntax is ArgumentSyntax argSynt &&
-                    argSynt.Expression is LiteralExpressionSyntax literal &&
-                    literal.IsKind(SyntaxKind.StringLiteralExpression))
-                {
-                    if (literal.Token.ValueText == invocation.Arguments[0].Syntax.ToString())
-                        return false;
-                }*/
-                return false;
-            }
 
             return true;
         }

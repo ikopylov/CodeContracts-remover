@@ -14,7 +14,7 @@ namespace ContractFix.Special.NameOf
     //[DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class NameOfAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "CR01_ToNameOfCS";
+        public const string DiagnosticId = "CRS07_ToNameOfCS";
         private const string Title = "Argument string can be replaced with nameof";
         private const string MessageFormat = "Can be replaced with nameof({0})";
         private const string Description = "Replace with nameof";

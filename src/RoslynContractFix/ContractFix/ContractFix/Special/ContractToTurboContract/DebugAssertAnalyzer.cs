@@ -12,10 +12,10 @@ namespace ContractFix.Special.ContractToTurboContract
     //[DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class DebugAssertAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "CR03_DebugAssertToTurboContractReplace";
+        public const string DiagnosticId = "CRS10_DebugAssertToTurboContractReplace";
         private const string Title = "Debug.Assert can be replaced with TurboContract";
-        private const string MessageFormat = "can be replaced with TurboContract";
-        private const string Description = "with TurboContract";
+        private const string MessageFormat = "Debug.Assert can be replaced with TurboContract";
+        private const string Description = "Debug.Assert can be replaced with TurboContract";
         private const string Category = "Usage";
 
         private static DiagnosticDescriptor Rule = new DiagnosticDescriptor(DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: Description);
@@ -46,7 +46,7 @@ namespace ContractFix.Special.ContractToTurboContract
             if (invocation.TargetMethod.Kind != SymbolKind.Method || !invocation.TargetMethod.IsStatic)
                 return;
 
-            if (context.ContainingSymbol is IMethodSymbol method && method.ContainingType.Name == "TurboContract")
+            if (context.ContainingSymbol is IMethodSymbol method && method.ContainingType.Name == ContractStatementAnalyzer.SpecialContractClass)
                 return;
 
             if (!IsDebugAssertToReplace(context.Compilation, invocation))
