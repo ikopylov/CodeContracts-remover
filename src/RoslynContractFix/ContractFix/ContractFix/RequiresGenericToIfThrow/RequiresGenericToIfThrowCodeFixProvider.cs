@@ -157,7 +157,7 @@ namespace ContractFix.RequiresGenericToIfThrow
 
 
             if (constructorWithMsgAndExc != null)
-                return GenerateConsturctionExpr(constructorWithParamAndMsg, (IsInnerExceptionArg, generator.CastExpression(exceptionType, generator.NullLiteralExpression())), (IsMessageArg, messagePromoted));
+                return GenerateConsturctionExpr(constructorWithMsgAndExc, (IsInnerExceptionArg, generator.CastExpression(exceptionType, generator.NullLiteralExpression())), (IsMessageArg, messagePromoted));
 
 
             return (ExpressionSyntax)generator.ObjectCreationExpression(typeInfo);
