@@ -119,17 +119,33 @@ namespace ContractFix.EliminateContractClass
 
         public override async Task<CodeAction> GetFixAsync(FixAllContext context)
         {
-            var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
-            var diagnostics = await context.GetDocumentDiagnosticsAsync(context.Document);
-            var nodesToReplace = diagnostics.Select(o => root.FindNode(o.Location.SourceSpan, getInnermostNodeForTie: true)).ToList();
+            if (context.Scope == FixAllScope.Project || context.Scope == FixAllScope.Solution)
+            {
+                Dictionary<Document, List<SyntaxNode>> nodesToReplace = null;
+                if (context.Scope == FixAllScope.Project)
+                    nodesToReplace = await CollectProjectDiagnostics(context.Project, context);
+                else if (context.Scope == FixAllScope.Solution)
+                    nodesToReplace = await CollectSolutionDiagnostics(context.Solution, context);
 
-            return CodeAction.Create(
+                return CodeAction.Create(
                     title: title,
-                    createChangedDocument: c => ReplaceAllWithDebugAssert(context.Document, nodesToReplace, c),
+                    createChangedSolution: c => RemoveAllContractClassesInSolution(context.Solution, nodesToReplace, c),
                     equivalenceKey: title);
+            }
+            else
+            {
+                var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
+                var diagnostics = await context.GetDocumentDiagnosticsAsync(context.Document);
+                var nodesToReplace = diagnostics.Select(o => root.FindNode(o.Location.SourceSpan, getInnermostNodeForTie: true)).ToList();
+
+                return CodeAction.Create(
+                        title: title,
+                        createChangedDocument: c => RemoveAllContractClasses(context.Document, nodesToReplace, c),
+                        equivalenceKey: title);
+            }
         }
 
-        private static async Task<Document> ReplaceAllWithDebugAssert(Document document, List<SyntaxNode> nodesToReplace, CancellationToken cancellationToken)
+        private static async Task<Document> RemoveAllContractClasses(Document document, List<SyntaxNode> nodesToReplace, CancellationToken cancellationToken)
         {
             if (nodesToReplace.Count == 0)
                 return document;
@@ -147,6 +163,68 @@ namespace ContractFix.EliminateContractClass
                 EliminateContractClassCodeFixProvider.RemoveClassWithAttrib(editor, node.Item1, node.Item2);
 
             return editor.GetChangedDocument();
+        }
+
+
+
+
+        private static async Task<Dictionary<Document, List<SyntaxNode>>> CollectProjectDiagnostics(Project project, FixAllContext context)
+        {
+            Dictionary<SyntaxTree, Document> syntaxTreeToDocMap = new Dictionary<SyntaxTree, Document>();
+            foreach (var doc in project.Documents)
+            {
+                var tree = await doc.GetSyntaxTreeAsync(context.CancellationToken).ConfigureAwait(false);
+                syntaxTreeToDocMap.Add(tree, doc);
+            }
+
+            Dictionary<Document, List<SyntaxNode>> result = new Dictionary<Document, List<SyntaxNode>>();
+
+            var allProjectDiags = await context.GetAllDiagnosticsAsync(project).ConfigureAwait(false);
+            foreach (var resDiag in allProjectDiags)
+            {
+                if (!syntaxTreeToDocMap.TryGetValue(resDiag.Location.SourceTree, out Document curDoc))
+                    continue;
+
+                var root = await resDiag.Location.SourceTree.GetRootAsync(context.CancellationToken);
+                var nodeToReplace = root.FindNode(resDiag.Location.SourceSpan, getInnermostNodeForTie: true);
+
+                if (!result.TryGetValue(curDoc, out List<SyntaxNode> curDocNodes))
+                {
+                    curDocNodes = new List<SyntaxNode>();
+                    result.Add(curDoc, curDocNodes);
+                }
+
+                curDocNodes.Add(nodeToReplace);
+            }
+
+            return result;
+        }
+
+        private static async Task<Dictionary<Document, List<SyntaxNode>>> CollectSolutionDiagnostics(Solution solution, FixAllContext context)
+        {
+            Dictionary<Document, List<SyntaxNode>> result = new Dictionary<Document, List<SyntaxNode>>();
+
+            foreach (var proj in solution.Projects)
+            {
+                var projDiag = await CollectProjectDiagnostics(proj, context);
+
+                foreach (var diag in projDiag)
+                    result.Add(diag.Key, diag.Value);
+            }
+
+            return result;
+        }
+
+
+        private static async Task<Solution> RemoveAllContractClassesInSolution(Solution solution, Dictionary<Document, List<SyntaxNode>> nodesToReplace, CancellationToken cancellationToken)
+        {
+            foreach (var diagNodes in nodesToReplace)
+            {
+                var updatedDoc = await RemoveAllContractClasses(diagNodes.Key, diagNodes.Value, cancellationToken);
+                solution = solution.WithDocumentSyntaxRoot(diagNodes.Key.Id, await updatedDoc.GetSyntaxRootAsync(cancellationToken));
+            }
+
+            return solution;
         }
     }
 }
