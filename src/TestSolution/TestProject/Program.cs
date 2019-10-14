@@ -33,6 +33,12 @@ namespace Nmasa
             Contract.Assert(val != null, "Message " + 1.ToString());
             System.Diagnostics.Debug.Assert(val != null);
         }
+
+        static void ContractTestRange(int[] data)
+        {
+            Contract.Requires(Contract.ForAll(data, o => o > 0));
+            Contract.Requires(Contract.Exists(data, o => o > 0));
+        }
     }
 
 

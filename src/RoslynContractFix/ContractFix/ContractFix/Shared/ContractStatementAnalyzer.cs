@@ -10,7 +10,7 @@ namespace ContractFix
     public class ContractInvocationInfo
     {
         public ContractInvocationInfo(SimpleNameSyntax className, SimpleNameSyntax methodName, NameSyntax exceptionType,
-            ExpressionSyntax condition, ExpressionSyntax message, ExpressionSyntax conditionString)
+            ExpressionSyntax condition, ExpressionSyntax message, ExpressionSyntax conditionString, ArgumentListSyntax allArguments)
         {
             ClassName = className;
             MethodName = methodName;
@@ -18,6 +18,7 @@ namespace ContractFix
             Condition = condition;
             Message = message;
             ConditionString = conditionString;
+            AllArguments = allArguments;
         }
 
         public SimpleNameSyntax ClassName { get; }
@@ -26,6 +27,7 @@ namespace ContractFix
         public ExpressionSyntax Condition { get; }
         public ExpressionSyntax Message { get; }
         public ExpressionSyntax ConditionString { get; }
+        public ArgumentListSyntax AllArguments { get; }
 
         public string ClassNameAsString { get { return ClassName.Identifier.ValueText; } }
         public string MethodNameAsString { get { return MethodName.Identifier.ValueText; } }
@@ -116,7 +118,7 @@ namespace ContractFix
 
                     if (className != null && methodName != null && condition != null)
                     {
-                        invocationInfo = new ContractInvocationInfo(className, methodName, genericExceptionType, condition, message, conditionString);
+                        invocationInfo = new ContractInvocationInfo(className, methodName, genericExceptionType, condition, message, conditionString, invocation.ArgumentList);
                         return true;
                     }
                 }
