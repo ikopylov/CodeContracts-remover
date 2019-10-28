@@ -48,7 +48,7 @@ namespace ContractFix.CodeContractFromBase
         private static IEnumerable<IMethodSymbol> GetInterfaceImplementation(IMethodSymbol method)
         {
             return method.ContainingType.AllInterfaces.SelectMany(@interface => @interface.GetMembers().OfType<IMethodSymbol>()).
-                Where(interfaceMethod => method.ContainingType.FindImplementationForInterfaceMember(interfaceMethod).Equals(method));
+                Where(interfaceMethod => method.ContainingType.FindImplementationForInterfaceMember(interfaceMethod)?.Equals(method) ?? false);
         }
         private static IEnumerable<IMethodSymbol> GetOverridenMethods(IMethodSymbol method)
         {

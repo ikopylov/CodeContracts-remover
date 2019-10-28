@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="ContractFix.ca38bdda-3bf6-437e-823a-d9214656f65f" Version="1.0" Language="en-US" Publisher="Qoollo"/>
+        <Identity Id="ContractFix.ca38bdda-3bf6-437e-823a-d9214656f65f" Version="1.0.1" Language="en-US" Publisher="Qoollo"/>
         <DisplayName>ContractFix</DisplayName>
         <Description xml:space="preserve">CodeContracts remover</Description>
     </Metadata>

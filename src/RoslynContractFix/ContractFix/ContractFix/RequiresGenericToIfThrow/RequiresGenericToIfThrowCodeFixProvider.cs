@@ -51,6 +51,17 @@ namespace ContractFix.RequiresGenericToIfThrow
                 context.Diagnostics);
         }
 
+        private static bool IsComparisonExpr(ExpressionSyntax expr)
+        {
+            var exprKind = expr.Kind();
+            return exprKind == SyntaxKind.NotEqualsExpression ||
+                   exprKind == SyntaxKind.EqualsExpression ||
+                   exprKind == SyntaxKind.GreaterThanExpression ||
+                   exprKind == SyntaxKind.GreaterThanOrEqualExpression ||
+                   exprKind == SyntaxKind.LessThanExpression ||
+                   exprKind == SyntaxKind.LessThanOrEqualExpression;
+        }
+
         private static ExpressionSyntax SmartNotExpression(ExpressionSyntax expr, SyntaxGenerator generator)
         {
             if (expr is BinaryExpressionSyntax binary)
@@ -69,7 +80,16 @@ namespace ContractFix.RequiresGenericToIfThrow
                         return (ExpressionSyntax)generator.GreaterThanOrEqualExpression(binary.Left, binary.Right);
                     case SyntaxKind.LessThanOrEqualExpression:
                         return (ExpressionSyntax)generator.GreaterThanExpression(binary.Left, binary.Right);
+                    case SyntaxKind.LogicalOrExpression when IsComparisonExpr(binary.Left) && IsComparisonExpr(binary.Right):
+                        return (ExpressionSyntax)generator.LogicalAndExpression(SmartNotExpression(binary.Left, generator), SmartNotExpression(binary.Right, generator));
+                    case SyntaxKind.LogicalAndExpression when IsComparisonExpr(binary.Left) && IsComparisonExpr(binary.Right):
+                        return (ExpressionSyntax)generator.LogicalOrExpression(SmartNotExpression(binary.Left, generator), SmartNotExpression(binary.Right, generator));
                 }
+            }
+            else if (expr is PrefixUnaryExpressionSyntax prefixUnary)
+            {
+                if (prefixUnary.IsKind(SyntaxKind.LogicalNotExpression))
+                    return prefixUnary.Operand;
             }
 
             return (ExpressionSyntax)generator.LogicalNotExpression(expr);

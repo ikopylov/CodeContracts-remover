@@ -24,6 +24,7 @@ namespace Nmasa
         static void ContractTest(string val, int data)
         {
             Contract.Requires<ArgumentNullException>(val != null, "aaa" + "ab");
+            Contract.Requires<ArgumentNullException>(!string.IsNullOrEmpty(val));
             Contract.Requires<ArgumentOutOfRangeException>(data >= 0);
             Contract.Requires<ArgumentException>(data != 0 && val != "fff");
             Contract.Requires<InvalidOperationException>(data < 100);
